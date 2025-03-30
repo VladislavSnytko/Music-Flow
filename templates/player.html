@@ -41,6 +41,7 @@
     <div>
         <input type="text" id="track-url" placeholder="Вставьте ссылку на трек" style="width: 80%; padding: 8px;">
         <button onclick="playTrack()">Воспроизвести</button>
+        <button onclick="createSession()">Создать руму</button>
     </div>
     
     <!-- <div id="player" style="display: none;">
@@ -168,6 +169,16 @@
                     alert('Не удалось загрузить трек');
                 });
         }
+
+        async function createSession() {
+                try {
+                    const response = await fetch('/create_room');
+                    const data = await response.json();
+                    console.log(data);
+                } catch (error) {
+                    console.error('Ошибка:', error);
+                }
+            }
 
         function stopTrack() {
             if (currentAudio) {

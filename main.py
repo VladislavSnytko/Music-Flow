@@ -1,37 +1,15 @@
-# from fastapi import FastAPI, HTTPException
-# from fastapi.responses import StreamingResponse
-# from yandex_music import Client
-# import requests
-
-# app = FastAPI()
-# client = Client('ваш_oauth_токен').init()
-
-# @app.get("/stream/{track_id}")
-# async def stream_audio(track_id: str):
-#     try:
-#         track = client.tracks(track_id)[0]
-#         download_info = track.get_download_info()[0]
-#         stream_url = download_info.get_direct_link()
-        
-#         # Потоковая передача аудио
-#         audio_stream = requests.get(stream_url, stream=True)
-        
-#         return StreamingResponse(
-#             audio_stream.iter_content(chunk_size=1024),
-#             media_type="audio/mpeg"
-#         )
-        
-#     except Exception as e:
-#         raise HTTPException(status_code=400, detail=str(e))
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Depends
 from fastapi.responses import HTMLResponse, StreamingResponse, Response
-from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from yandex_music import Client
 from dotenv import load_dotenv
 import requests
 import json
 import os
+
+from repositories.rooms_repository import RoomsRepository
+from db.base import Database
+# from db.base import Database
 
 
 load_dotenv()
@@ -44,6 +22,34 @@ client = Client(OAUTH_TOKEN).init()
 @app.get("/", response_class=HTMLResponse)
 async def player_page(request: Request):
     return templates.TemplateResponse("player.html", {"request": request})
+
+
+@app.get("/create_room")
+async def create_room(db: Database = Depends(Database)):
+    # try:
+    #     resp = await conn.fetchrow("SELECT * FROM rooms")
+    #     print(resp)
+    #     done = {'Status': 'Successfully'}
+    #     return Response(
+    #         content=json.dumps(done),
+    #         status_code=200
+    #     )
+    # except Exception:
+    #     er = {'Status': 'Error'}
+    #     return Response(
+    #         content=json.dumps(er),
+    #         status_code=504
+    #     )
+    # query = text("SELECT * FROM rooms")
+    # resp = await conn.execute(query)
+    # print(resp)
+    resp = RoomsRepository(db)
+    gete = await resp.get_all()
+    done = {'Status': 'Successfully'}
+    return Response(
+        content=json.dumps(done),
+        status_code=200
+    )
 
 @app.get("/stream")
 async def stream_audio(url: str):
