@@ -20,6 +20,7 @@ print(POSTGRES_PORT)
 
 class Database:
     def __init__(self):
+        # Не работает пока через переменные среды
         DATABASE_URL = "postgresql+asyncpg://{POSTGRES_USERNAME}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DATABASE}"
         self.engine = create_async_engine(DATABASE_URL)
         self.session_factory = sessionmaker(

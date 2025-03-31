@@ -5,7 +5,7 @@ from sqlalchemy import select
 from db.base import Database
 
 # FastAPI Dependency
-class RoomsRepository:
+class RoomsServices:
     def __init__(self, db: Database):
         self.db = db
 
@@ -13,10 +13,10 @@ class RoomsRepository:
         async with self.db.session_factory() as session:
             print(session)
             result = await session.execute(select(Rooms))
-            print(result.scalars().one().list_track)
+            # print(result.scalars().one())
             return result.scalars().all()
         
 if __name__ == '__main__':
     d = Database()
-    b = RoomsRepository(d)
+    b = RoomsServices(d)
     asyncio.run(b.get_all())

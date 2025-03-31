@@ -7,7 +7,7 @@ import requests
 import json
 import os
 
-from repositories.rooms_repository import RoomsRepository
+from services.rooms_services import RoomsServices
 from db.base import Database
 # from db.base import Database
 
@@ -43,9 +43,12 @@ async def create_room(db: Database = Depends(Database)):
     # query = text("SELECT * FROM rooms")
     # resp = await conn.execute(query)
     # print(resp)
-    resp = RoomsRepository(db)
+    resp = RoomsServices(db)
     gete = await resp.get_all()
-    done = {'Status': 'Successfully'}
+    done = {
+        'Status': 'Successfully'
+        }
+    print(done)
     return Response(
         content=json.dumps(done),
         status_code=200
