@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 import requests
 import json
 import os
+import sqlalchemy
 
 from services.rooms_services import RoomsServices
 from db.base import Database
@@ -24,30 +25,19 @@ async def player_page(request: Request):
     return templates.TemplateResponse("player.html", {"request": request})
 
 
-@app.get("/create_room")
-async def create_room(db: Database = Depends(Database)):
-    # try:
-    #     resp = await conn.fetchrow("SELECT * FROM rooms")
-    #     print(resp)
-    #     done = {'Status': 'Successfully'}
-    #     return Response(
-    #         content=json.dumps(done),
-    #         status_code=200
-    #     )
-    # except Exception:
-    #     er = {'Status': 'Error'}
-    #     return Response(
-    #         content=json.dumps(er),
-    #         status_code=504
-    #     )
-    # query = text("SELECT * FROM rooms")
-    # resp = await conn.execute(query)
-    # print(resp)
+@app.post("/create_room")
+async def create_room(name_rooms: str, db: Database = Depends(Database)):
     resp = RoomsServices(db)
-    gete = await resp.get_all()
-    done = {
-        'Status': 'Successfully'
-        }
+    print(name_rooms)
+    try:
+        done = await resp.create_room(name_rooms)
+        print(done)
+    except sqlalchemy.exc.IntegrityError as e:
+        return Response(
+        content=json.dumps({'Status': 'Error', 'Message': str(e)}),
+        status_code=500
+    )
+    done = await resp.get_all()
     print(done)
     return Response(
         content=json.dumps(done),
@@ -76,7 +66,9 @@ async def stream_audio(url: str):
         def generate():
             with requests.get(stream_url, stream=True) as r:
                 for chunk in r.iter_content(chunk_size=1024*16):  # Увеличенный буфер
-                    yield chunk
+                    if chunk:
+                        yield chunk
+                        del chunk
                     
         return StreamingResponse(
             generate(),
