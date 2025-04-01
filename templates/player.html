@@ -40,6 +40,7 @@
     
     <div>
         <input type="text" id="track-url" placeholder="Вставьте ссылку на трек" style="width: 80%; padding: 8px;">
+        <input type="text" id="room-name" placeholder="Введите название комнаты" style="width: 80%; padding: 8px;">
         <button onclick="playTrack()">Воспроизвести</button>
         <button onclick="createSession()">Создать руму</button>
     </div>
@@ -172,7 +173,8 @@
 
         async function createSession() {
                 try {
-                    const response = await fetch('/create_room');
+                    const name_room = document.getElementById('room-name').value;
+                    const response = await fetch(`/create_room?name_rooms=${name_room}`, {method: 'POST'});
                     const data = await response.json();
                     console.log(data);
                 } catch (error) {
