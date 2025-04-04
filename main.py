@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, Depends
+from fastapi import FastAPI, HTTPException, Request, Depends, WebSocket
 from fastapi.responses import HTMLResponse, StreamingResponse, Response
 from fastapi.templating import Jinja2Templates
 from yandex_music import Client
@@ -9,20 +9,51 @@ import os
 import sqlalchemy
 
 from services.rooms_services import RoomsServices
+from services.users_services import UserServices
+from services.tokens_services import TokenServices
+
 from db.base import Database
+from wbs.websocket_manager import ConnectionManager
+from wbs.websocket_routes import WebSocketRoutes
 # from db.base import Database
 
 
 load_dotenv()
 app = FastAPI()
+db = Database()
+manager = ConnectionManager(db)
 templates = Jinja2Templates(directory="templates")
 OAUTH_TOKEN = os.getenv("OAUTH_TOKEN")
+CLIENT_ID = os.getenv("YANDEX_CLIENT_ID")
+CLIENT_SECRET = os.getenv("YANDEX_CLIENT_SECRET")
+REDIRECT_URI = "http://localhost:8000/callback"
 # Инициализация клиента Яндекс.Музыки
 client = Client(OAUTH_TOKEN).init()
+ws_routes = WebSocketRoutes(manager)
 
 @app.get("/", response_class=HTMLResponse)
 async def player_page(request: Request):
+    cookies = request.cookies
+    print(cookies)
     return templates.TemplateResponse("player.html", {"request": request})
+
+
+async def get_access_token(code: str):
+    """
+    Обмен кода авторизации на токен доступа.
+    """
+    token_url = "https://oauth.yandex.ru/token"
+    data = {
+        "grant_type": "authorization_code",
+        "code": code,
+        "client_id": CLIENT_ID,
+        "client_secret": CLIENT_SECRET,
+    }
+    response = requests.post(token_url, data=data)
+    if response.status_code != 200:
+        raise HTTPException(status_code=400, detail="Ошибка при получении токена")
+    print(response.json().get("access_token"))
+    return response.json().get("access_token")
 
 
 @app.post("/create_room")
@@ -43,6 +74,25 @@ async def create_room(name_rooms: str, db: Database = Depends(Database)):
         content=json.dumps(done),
         status_code=200
     )
+
+
+@app.post('/auth/sign-in')
+async def auth_login(request: Request, db: Database = Depends(Database)):
+    try:
+        obj = await request.json()
+
+        user_model = UserServices(db)
+        token_model = TokenServices(db)
+
+        user = await user_model.logging(obj)
+
+        if user:
+            token = await token_model.new_token(obj=obj, user_id=user.id)
+            return {'status': 'Successfully', 'token': token}
+        return {'status': 'error', 'message': 'Неправильный логин или пароль'}
+    except Exception as e:
+        print(e)
+        return {'message': e}
 
 @app.get("/stream")
 async def stream_audio(url: str):

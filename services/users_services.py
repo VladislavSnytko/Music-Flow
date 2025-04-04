@@ -4,8 +4,9 @@ import sqlalchemy
 from sqlalchemy import select
 
 from models.Users import Users  # Импорт всех моделей
+from models.Tokens import Tokens
 
-from db.base import Database, Base
+from db.base import Database
 # from db.base import engine, Base, AsyncSession
 
 from pydantic import EmailStr
@@ -21,16 +22,16 @@ class UserServices:
         self.db = db
 
 
-    async def create_token(obj):
-        secret_key = secrets.token_urlsafe(20)
+    # async def create_token(self, obj):
+    #     secret_key = secrets.token_urlsafe(20)
 
-        token = jwt.encode(obj, secret_key, algorithm='HS256')
-        return token    
+    #     token = jwt.encode(obj, secret_key, algorithm='HS256')
+    #     return token    
 
 
-    async def hash_password(self, password):
-        hashed_password = sha256(password.encode()).hexdigest()
-        return hashed_password
+    # async def hash_password(self, password):
+    #     hashed_password = sha256(password.encode()).hexdigest()
+    #     return hashed_password
 
     async def get_all(self):
         async with self.db.session_factory() as session:
@@ -59,11 +60,26 @@ class UserServices:
                 rooms_list=rooms_list,
                 yandex_token=yandex_token
             )
+            # new_user_friends = 
 
         session.add(new_user)
         await session.commit()
 
         return {'Status': 'Successfully'}
+    
+    async def logging(self, obj: dict):
+        async with self.db.session_factory() as session:
+            print(obj)
+            if 'yandex_token' in obj:
+                result = await session.execute(select(Users).where(Users.yandex_token == obj['yandex_token']))
+            else:
+                result = await session.execute(select(Users).where((Users.email == obj['nickname'] or Users.username == obj['nickname']) and 
+                                                                   Users.hashed_password == obj['hashed_password']))
+            user = result.scalar_one()
+            print(user)
+            if user:
+                return user
+            return None
 
         
 if __name__ == '__main__':

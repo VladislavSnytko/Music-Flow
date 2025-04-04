@@ -1,21 +1,32 @@
 <!DOCTYPE html>
 <html>
+
 <head>
-    <title>Яндекс.Музыка Плеер</title>
+    <title>Совместный плеер Яндекс.Музыки</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-            max-width: 600px;
+            max-width: 800px;
             margin: 0 auto;
             padding: 20px;
-            text-align: center;
         }
-        #player {
-            margin-top: 20px;
+
+        .container {
+            display: flex;
+            gap: 20px;
+        }
+
+        .player-section {
+            flex: 2;
+        }
+
+        .room-section {
+            flex: 1;
             background: #f5f5f5;
-            padding: 20px;
-            border-radius: 10px;
+            padding: 15px;
+            border-radius: 8px;
         }
+
         #cover {
             width: 200px;
             height: 200px;
@@ -23,147 +34,206 @@
             border-radius: 10px;
             margin-bottom: 15px;
         }
+
         #progress {
             width: 100%;
             margin: 15px 0;
         }
+
         button {
-            padding: 10px 20px;
-            margin: 0 5px;
-            font-size: 16px;
+            padding: 8px 15px;
+            margin: 5px;
             cursor: pointer;
+        }
+
+        #participants-list {
+            margin-top: 15px;
+            text-align: left;
+        }
+
+        .hidden {
+            display: none;
         }
     </style>
 </head>
+
 <body>
-    <h1>Яндекс.Музыка Плеер</h1>
-    
-    <div>
-        <input type="text" id="track-url" placeholder="Вставьте ссылку на трек" style="width: 80%; padding: 8px;">
-        <input type="text" id="room-name" placeholder="Введите название комнаты" style="width: 80%; padding: 8px;">
-        <button onclick="playTrack()">Воспроизвести</button>
-        <button onclick="createSession()">Создать руму</button>
-    </div>
-    
-    <!-- <div id="player" style="display: none;">
-        <img id="cover" src="">
-        <h2 id="title"></h2>
-        <p id="artist"></p>
-        
-        <audio id="audio" controls></audio>
-        
-        <div>
-            <button onclick="document.getElementById('audio').play()">▶️</button>
-            <button onclick="document.getElementById('audio').pause()">⏸️</button>
-            <button onclick="stopTrack()">⏹️</button>
-        </div> -->
-        <div id="player" style="display: none;">
-            <img id="cover" src="">
-            <h2 id="title"></h2>
-            <p id="artist"></p>
-        
-            <audio id="audio" controls preload="metadata"></audio>
-        
-            <!-- Добавлен прогресс-бар -->
-            <input type="range" id="progress" value="0" min="0" step="0.1" style="width: 80%; margin: 15px 0;">
-        
+    <h1>Совместный плеер Яндекс.Музыки</h1>
+
+    <div class="container">
+        <div class="player-section">
             <div>
-                <button onclick="document.getElementById('audio').play()">▶️</button>
-                <button onclick="document.getElementById('audio').pause()">⏸️</button>
-                <button onclick="stopTrack()">⏹️</button>
+                <input type="text" id="track-url" placeholder="Ссылка на трек" style="width: 70%; padding: 8px;">
+                <button onclick="playTrack()">Загрузить</button>
+            </div>
+
+            <div id="player" class="hidden">
+                <img id="cover" src="">
+                <h2 id="title"></h2>
+                <p id="artist"></p>
+
+                <audio id="audio" controls preload="metadata"></audio>
+
+                <input type="range" id="progress" value="0" min="0" step="0.1">
+
+                <div>
+                    <button onclick="sendPlayCommand()">▶️</button>
+                    <button onclick="sendPauseCommand()">⏸️</button>
+                    <button onclick="stopTrack()">⏹️</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="room-section">
+            <h3>Комната</h3>
+            <div id="room-controls">
+                <input type="text" id="room-id" placeholder="ID комнаты" style="width: 70%; padding: 8px;">
+                <button onclick="joinRoom()">Присоединиться</button>
+                <button onclick="createRoom()">Создать</button>
+            </div>
+
+            <div id="room-info" class="hidden">
+                <p>ID комнаты: <span id="current-room-id"></span></p>
+                <p>Участники:</p>
+                <ul id="participants-list"></ul>
             </div>
         </div>
     </div>
 
-    <!-- <script>
-        let currentAudio = null;
-        
-        function playTrack() {
-            const url = document.getElementById('track-url').value;
-            if (!url.includes('music.yandex.ru')) {
-                alert('Пожалуйста, введите ссылку Яндекс.Музыки');
-                return;
-            }
-            
-            // Останавливаем предыдущее воспроизведение
-            if (currentAudio) {
-                currentAudio.pause();
-                currentAudio.src = '';
-            }
-            
-            // Создаем новый аудиоэлемент
-            currentAudio = document.getElementById('audio');
-            console.log(`url const: ${encodeURIComponent(url)}`);
-            currentAudio.src = `/stream?url=${encodeURIComponent(url)}`;
-            
-            // Получаем метаданные трека
-            fetch(`/stream?url=${encodeURIComponent(url)}`)
-                .then(response => {
-                    const trackInfo = JSON.parse(response.headers.get('Track-Info'));
-                    console.log(trackInfo);
-                    
-                    // Отображаем информацию о треке
-                    document.getElementById('title').textContent = trackInfo.title;
-                    document.getElementById('artist').textContent = trackInfo.artist;
-                    document.getElementById('cover').src = trackInfo.cover;
-                    document.getElementById('player').style.display = 'block';
-                    
-                    // Начинаем воспроизведение
-                    // currentAudio.play();
-                })
-                .catch(error => {
-                    console.error('Ошибка:', error);
-                    alert('Не удалось загрузить трек');
-                });
-        }
-        
-        function stopTrack() {
-            if (currentAudio) {
-                currentAudio.pause();
-                currentAudio.currentTime = 0;
-            }
-        }
-    </script> -->
     <script>
-        let currentAudio = null;
+        // Глобальные переменные
+        let socket = null;
+        let currentAudio = document.getElementById('audio');
+        let userId = 'user-' + Math.random().toString(36).substr(2, 8);
+        let currentRoomId = null;
+        let isSyncing = false;
 
-        function playTrack() {
-            const url = document.getElementById('track-url').value;
-            if (!url.includes('music.yandex.ru')) {
-                alert('Пожалуйста, введите ссылку Яндекс.Музыки');
-                return;
+        // Инициализация WebSocket соединения
+        function connectWebSocket(roomId) {
+            if (socket) {
+                socket.close();
             }
 
-            if (currentAudio) {
+            socket = new WebSocket(`ws://${window.location.host}/ws/${roomId}/${userId}`);
+
+            socket.onopen = () => {
+                console.log('WebSocket connected');
+                currentRoomId = roomId;
+                document.getElementById('current-room-id').textContent = roomId;
+                document.getElementById('room-info').classList.remove('hidden');
+            };
+
+            socket.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                console.log('Received:', data);
+
+                handleSocketMessage(data);
+            };
+
+            socket.onclose = () => {
+                console.log('WebSocket disconnected');
+                setTimeout(() => {
+                    if (currentRoomId) {
+                        connectWebSocket(currentRoomId);
+                    }
+                }, 1000);
+            };
+        }
+
+        // Обработка входящих сообщений
+        function handleSocketMessage(data) {
+            switch (data.type) {
+                case 'init':
+                    handleInitMessage(data);
+                    break;
+                case 'play':
+                    handlePlayMessage(data);
+                    break;
+                case 'pause':
+                    handlePauseMessage(data);
+                    break;
+                case 'change_track':
+                    handleChangeTrackMessage(data);
+                    break;
+                case 'seek':
+                    handleSeekMessage(data);
+                    break;
+                case 'participants_update':
+                    updateParticipantsList(data.participants);
+                    break;
+            }
+        }
+
+        // Обработка инициализации
+        function handleInitMessage(data) {
+            if (data.room.list_track && data.room.list_track.length > 0) {
+                loadTrack(data.room.list_track[data.room.index_track]);
+            }
+
+            if (data.room.status_track) {
+                syncPlayback(true, data.room.time_moment);
+            } else {
+                syncPlayback(false, data.room.time_moment);
+            }
+
+            updateParticipantsList(data.room.list_of_participants);
+        }
+
+        // Обработка команды play
+        function handlePlayMessage(data) {
+            syncPlayback(true, data.position);
+        }
+
+        // Обработка команды pause
+        function handlePauseMessage(data) {
+            syncPlayback(false, data.position);
+        }
+
+        // Обработка смены трека
+        function handleChangeTrackMessage(data) {
+            if (data.tracks && data.tracks.length > 0) {
+                loadTrack(data.tracks[data.index]);
+            }
+        }
+
+        // Обработка перемотки
+        function handleSeekMessage(data) {
+            if (!isSyncing) {
+                currentAudio.currentTime = data.position;
+            }
+        }
+
+        // Синхронизация воспроизведения
+        function syncPlayback(playing, position) {
+            isSyncing = true;
+
+            if (Math.abs(currentAudio.currentTime - position) > 0.5) {
+                currentAudio.currentTime = position;
+            }
+
+            if (playing && currentAudio.paused) {
+                currentAudio.play().catch(e => console.log('Play error:', e));
+            } else if (!playing && !currentAudio.paused) {
                 currentAudio.pause();
-                currentAudio.src = '';
             }
 
-            currentAudio = document.getElementById('audio');
-            currentAudio.src = `/stream?url=${encodeURIComponent(url)}`;
+            setTimeout(() => { isSyncing = false; }, 100);
+        }
 
-            // Добавляем обработчики для прогресс-бара
-            currentAudio.addEventListener('loadedmetadata', () => {
-                document.getElementById('progress').max = currentAudio.duration;
-            });
+        // Загрузка трека
+        function loadTrack(trackUrl) {
+            if (!trackUrl) return;
 
-            currentAudio.addEventListener('timeupdate', () => {
-                document.getElementById('progress').value = currentAudio.currentTime;
-            });
+            currentAudio.src = `/stream?url=${encodeURIComponent(trackUrl)}`;
 
-            // Обработчик изменения позиции через ползунок
-            document.getElementById('progress').addEventListener('input', (e) => {
-                currentAudio.currentTime = e.target.value;
-            });
-
-            fetch(`/stream?url=${encodeURIComponent(url)}`)
+            fetch(`/stream?url=${encodeURIComponent(trackUrl)}`)
                 .then(response => {
                     const trackInfo = JSON.parse(response.headers.get('Track-Info'));
 
                     document.getElementById('title').textContent = trackInfo.title;
                     document.getElementById('artist').textContent = trackInfo.artist;
                     document.getElementById('cover').src = trackInfo.cover;
-                    document.getElementById('player').style.display = 'block';
+                    document.getElementById('player').classList.remove('hidden');
                 })
                 .catch(error => {
                     console.error('Ошибка:', error);
@@ -171,24 +241,132 @@
                 });
         }
 
-        async function createSession() {
+        // Обновление списка участников
+        function updateParticipantsList(participants) {
+            const list = document.getElementById('participants-list');
+            list.innerHTML = '';
+
+            participants.forEach(participant => {
+                const li = document.createElement('li');
+                li.textContent = participant;
+                list.appendChild(li);
+            });
+        }
+
+        // Отправка команд на сервер
+        function sendPlayCommand() {
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: 'play',
+                    position: currentAudio.currentTime
+                }));
+            }
+        }
+
+        function sendPauseCommand() {
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: 'pause',
+                    position: currentAudio.currentTime
+                }));
+            }
+        }
+
+        function sendSeekCommand() {
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: 'seek',
+                    position: currentAudio.currentTime
+                }));
+            }
+        }
+
+        function sendTrackChange(trackUrl) {
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: 'change_track',
+                    tracks: [trackUrl],
+                    index: 0
+                }));
+            }
+        }
+
+        // Управление комнатами
+        function joinRoom() {
+            const roomId = document.getElementById('room-id').value;
+            if (roomId) {
+                connectWebSocket(roomId);
+            }
+        }
+
+        async function createRoom() {
+            const roomName = prompt('Введите название комнаты:');
+            if (roomName) {
                 try {
-                    const name_room = document.getElementById('room-name').value;
-                    const response = await fetch(`/create_room?name_rooms=${name_room}`, {method: 'POST'});
+                    const response = await fetch(`/create_room?name_rooms=${encodeURIComponent(roomName)}`, {
+                        method: 'POST'
+                    });
                     const data = await response.json();
-                    console.log(data);
+
+                    if (data && data.id) {
+                        connectWebSocket(data.id);
+                    }
                 } catch (error) {
                     console.error('Ошибка:', error);
                 }
             }
+        }
+
+        // Обработчики событий плеера
+        currentAudio.addEventListener('play', () => {
+            if (!isSyncing) {
+                sendPlayCommand();
+            }
+        });
+
+        currentAudio.addEventListener('pause', () => {
+            if (!isSyncing) {
+                sendPauseCommand();
+            }
+        });
+
+        currentAudio.addEventListener('seeked', () => {
+            if (!isSyncing) {
+                sendSeekCommand();
+            }
+        });
+
+        // Прогресс-бар
+        currentAudio.addEventListener('timeupdate', () => {
+            document.getElementById('progress').value = currentAudio.currentTime;
+        });
+
+        document.getElementById('progress').addEventListener('input', (e) => {
+            currentAudio.currentTime = e.target.value;
+            sendSeekCommand();
+        });
+
+        // Загрузка трека
+        function playTrack() {
+            const url = document.getElementById('track-url').value;
+            if (!url.includes('music.yandex.ru')) {
+                alert('Пожалуйста, введите ссылку Яндекс.Музыки');
+                return;
+            }
+
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                sendTrackChange(url);
+            } else {
+                loadTrack(url);
+            }
+        }
 
         function stopTrack() {
-            if (currentAudio) {
-                currentAudio.pause();
-                currentAudio.currentTime = 0;
-                document.getElementById('progress').value = 0;
-            }
+            currentAudio.pause();
+            currentAudio.currentTime = 0;
+            document.getElementById('progress').value = 0;
         }
     </script>
 </body>
+
 </html>

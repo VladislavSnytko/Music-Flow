@@ -4,6 +4,8 @@ import sqlalchemy
 # from db.base import engine, Base, AsyncSession
 from models.Rooms import Rooms  # Импорт всех моделей
 from models.Users import Users
+from models.Friends import Friends
+from models.Tokens import Tokens
 from sqlalchemy import select
 from db.base import Database, Base
 
