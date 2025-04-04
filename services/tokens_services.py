@@ -47,3 +47,9 @@ class TokenServices:
         except Exception as e:
             print(e)
             return {'status': 'error', 'message': e}
+        
+
+if __name__ == '__main__':
+    d = Database()
+    b = TokenServices(d)
+    asyncio.run(b.create_token({'s': 'w'}))
