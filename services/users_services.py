@@ -22,16 +22,16 @@ class UserServices:
         self.db = db
 
 
-    # async def create_token(self, obj):
-    #     secret_key = secrets.token_urlsafe(20)
+    async def create_token(self, obj):
+        secret_key = secrets.token_urlsafe(20)
 
-    #     token = jwt.encode(obj, secret_key, algorithm='HS256')
-    #     return token    
+        token = jwt.encode(obj, secret_key, algorithm='HS256')
+        return token    
 
 
-    # async def hash_password(self, password):
-    #     hashed_password = sha256(password.encode()).hexdigest()
-    #     return hashed_password
+    async def hash_password(self, password):
+        hashed_password = sha256(password.encode()).hexdigest()
+        return hashed_password
 
     async def get_all(self):
         async with self.db.session_factory() as session:
@@ -80,12 +80,17 @@ class UserServices:
             if user:
                 return user
             return None
+        
+    async def add_room(self, room_id: str, user_id: str):
+        async with self.db.session_factory() as session:
+            result = await session.execute(select(Users).where(Users.id == user_id))
+            print(type(result))
 
         
 if __name__ == '__main__':
     d = Database()
     b = UserServices(d)
     
-    # asyncio.run(b.create_new_user(email="example@yandex.ru", password="12345", birthday="12.06.2005", username="Stpdbdbldr"))
-    asyncio.run(b.get_all())
+    asyncio.run(b.create_new_user(email="example.com", password="12345", birthday="12.06.2005", username="sqlpmnt"))
+    # asyncio.run(b.get_all())
     # b.create_database()

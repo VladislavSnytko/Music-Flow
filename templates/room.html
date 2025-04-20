@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Комната {{room_id}}</title>
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #2980b9;
+            --background-color: #f8f9fa;
+            --card-color: white;
+            --text-color: #333;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--background-color);
+            color: var(--text-color);
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 3fr 1fr;
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .player-card {
+            background: var(--card-color);
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .participants-card {
+            background: var(--card-color);
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .track-info {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        #cover {
+            width: 200px;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 10px;
+            margin: 0 auto;
+            display: block;
+        }
+
+        #title {
+            font-size: 24px;
+            margin: 10px 0 5px;
+        }
+
+        #artist {
+            color: #666;
+            margin: 0 0 20px;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        .control-btn {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .control-btn:hover {
+            background: var(--secondary-color);
+        }
+
+        #participants-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .participant {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .participant-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 10px;
+            font-weight: bold;
+        }
+
+        .participant-you .participant-avatar {
+            background: #2ecc71;
+        }
+
+        .participant-name {
+            flex-grow: 1;
+        }
+
+        .status-badge {
+            font-size: 12px;
+            padding: 3px 8px;
+            border-radius: 12px;
+            background: #e74c3c;
+            color: white;
+        }
+
+        .status-online {
+            background: #2ecc71;
+        }
+
+        #progress {
+            width: 100%;
+            margin: 20px 0;
+        }
+
+        .room-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .room-id {
+            font-family: monospace;
+            background: #eee;
+            padding: 5px 10px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="player-card">
+            <div class="track-info">
+                <img id="cover" src="" alt="Обложка трека">
+                <h2 id="title">Название трека</h2>
+                <p id="artist">Исполнитель</p>
+            </div>
+
+            <audio id="audio" controls preload="metadata"></audio>
+
+            <input type="range" id="progress" value="0" min="0" step="0.1">
+
+            <div class="controls">
+                <button class="control-btn" onclick="sendPlayCommand()">▶</button>
+                <button class="control-btn" onclick="sendPauseCommand()">⏸</button>
+                <button class="control-btn" onclick="stopTrack()">⏹</button>
+            </div>
+        </div>
+
+        <div class="participants-card">
+            <div class="room-header">
+                <h2>Участники</h2>
+                <span class="room-id" id="room-id-display">{{room_id}}</span>
+            </div>
+
+            <ul id="participants-list">
+                <!-- Участники будут добавляться через JS -->
+            </ul>
+
+            <button onclick="leaveRoom()" style="width: 100%; margin-top: 20px;">Покинуть комнату</button>
+        </div>
+    </div>
+
+    <script>
+        const roomId = "{{ room_id }}";
+        let socket;
+        let userId;
+        async function getCookie(name) {
+                let matches = await fetch(`/get_cookie`, {method:`GET`});
+                return await matches.json();
+            }
+        async function initWebSocket() {
+            userId = await getCookie('user_id');
+            console.log(userId['user_id']);
+            userId = userId['user_id'];
+            
+            if (!userId) {
+                alert('Требуется авторизация');
+                // window.location.href = '/login';
+                return;
+            }
+
+            socket = new WebSocket(`ws://${window.location.host}/room/${roomId}/ws`);
+
+            socket.onopen = () => {
+                console.log('Connected to room', roomId);
+                socket.send(JSON.stringify({
+                    type: "get_participants"
+                }));
+            };
+
+            socket.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                console.log(data)
+                handleSocketMessage(data);
+            };
+
+            socket.onclose = () => {
+                console.log('Disconnected from room');
+            };
+        }
+
+        function handleSocketMessage(data) {
+            switch (data.type) {
+                case 'init':
+                    handleInitMessage(data);
+                    break;
+                case 'play':
+                    handlePlayMessage(data);
+                    break;
+                case 'pause':
+                    handlePauseMessage(data);
+                    break;
+                case 'change_track':
+                    handleChangeTrackMessage(data);
+                    break;
+                case 'seek':
+                    handleSeekMessage(data);
+                    break;
+                case 'participants_update':
+                    updateParticipantsList(data.participants);
+                    break;
+                // ... другие типы сообщений
+            }
+        }
+        function handleInitMessage(data) {
+            // console.log(data.room.list_of_participants);
+
+                updateParticipantsList(data.room.list_of_participants);
+
+                if (data.room.list_track && data.room.list_track.length > 0) {
+                    loadTrack(data.room.list_track[data.room.index_track], () => {
+                        syncPlayback(data.room.status_track, data.room.time_moment);
+                    });
+                }
+            }
+        function handlePlayMessage(data) {
+                syncPlayback(true, data.position);
+                updatePlayerUI(true);
+            }
+
+            // Обработка команды pause
+            function handlePauseMessage(data) {
+                syncPlayback(false, data.position);
+                updatePlayerUI(false);
+            }
+
+            // Обработка смены трека
+            function handleChangeTrackMessage(data) {
+                if (data.tracks && data.tracks.length > 0) {
+                    loadTrack(data.tracks[data.index]);
+                }
+            }
+            function handleSeekMessage(data) {
+                    if (!isSyncing) {
+                        currentAudio.currentTime = data.position;
+                    }
+                }
+
+                // Синхронизация воспроизведения
+            function syncPlayback(playing, position) {
+                isSyncing = true;
+
+                if (Math.abs(currentAudio.currentTime - position) > 0.5) {
+                    currentAudio.currentTime = position;
+                }
+
+                if (playing && currentAudio.paused) {
+                    currentAudio.play().catch(e => console.log('Play error:', e));
+                    updatePlayerUI(true);
+                } else if (!playing && !currentAudio.paused) {
+                    currentAudio.pause();
+                    updatePlayerUI(false);
+                }
+
+                setTimeout(() => { isSyncing = false; }, 100);
+            }
+            function updateParticipantsList(participants) {
+                    const list = document.getElementById('participants-list');
+                    list.innerHTML = '';
+                    console.log(participants)
+                    participants.forEach(participant => {
+                        const li = document.createElement('li');
+                        console.log(participant == userId);
+                        if (participant === userId) {
+                            li.classList.add('you');
+                        }
+
+                        // Создаем аватар с первой буквой имени
+                        const avatar = document.createElement('div');
+                        avatar.className = 'participant-avatar';
+                        avatar.textContent = participant.charAt(0).toUpperCase();
+                        li.appendChild(avatar);
+
+                        // Добавляем имя
+                        const nameSpan = document.createElement('span');
+                        nameSpan.textContent = participant + (participant === userId ? ' (Вы)' : '');
+                        li.appendChild(nameSpan);
+
+                        // Добавляем статус
+                        const status = document.createElement('span');
+                        status.className = 'status-badge status-online';
+                        status.textContent = 'online';
+                        li.appendChild(status);
+
+                        list.appendChild(li);
+                    });
+
+                    // document.getElementById('participants-count').textContent = participants.length;
+                }
+
+                // Обновление UI плеера
+                function updatePlayerUI(isPlaying) {
+                    document.getElementById('play-btn').disabled = isPlaying;
+                    document.getElementById('pause-btn').disabled = !isPlaying;
+                }
+
+                // Отправка команд на сервер
+                function sendPlayCommand() {
+                    if (socket && socket.readyState === WebSocket.OPEN) {
+                        socket.send(JSON.stringify({
+                            type: 'play',
+                            position: currentAudio.currentTime
+                        }));
+                        updatePlayerUI(true);
+                    }
+                }
+
+                function sendPauseCommand() {
+                    if (socket && socket.readyState === WebSocket.OPEN) {
+                        socket.send(JSON.stringify({
+                            type: 'pause',
+                            position: currentAudio.currentTime
+                        }));
+                        updatePlayerUI(false);
+                    }
+                }
+
+                function sendSeekCommand() {
+                    if (socket && socket.readyState === WebSocket.OPEN) {
+                        socket.send(JSON.stringify({
+                            type: 'seek',
+                            position: currentAudio.currentTime
+                        }));
+                    }
+                }
+
+                function sendTrackChange(trackUrl) {
+                    if (socket && socket.readyState === WebSocket.OPEN) {
+                        socket.send(JSON.stringify({
+                            type: 'change_track',
+                            tracks: [trackUrl],
+                            index: 0
+                        }));
+                    }
+                }
+
+                // Запрос обновления списка участников
+                // function requestParticipantsUpdate() {
+                //     if (socket && socket.readyState === WebSocket.OPEN) {
+                //         socket.send(JSON.stringify({
+                //             type: "add_participant",
+                //             user_id: userId,
+                //             room_id:  
+                //         }));
+                //     }
+                // }
+
+        function updateParticipants(participants) {
+            const list = document.getElementById('participants-list');
+            list.innerHTML = participants.map(p =>
+                `<li>${p}</li>`
+            ).join('');
+        }
+
+        document.addEventListener('DOMContentLoaded', initWebSocket);
+    </script>
+</body>
+
+</html>

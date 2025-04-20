@@ -1,5 +1,5 @@
-from fastapi import FastAPI, HTTPException, Request, Depends, WebSocket
-from fastapi.responses import HTMLResponse, StreamingResponse, Response
+from fastapi import FastAPI, HTTPException, Request, Depends, WebSocket, Response, Cookie
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, Response, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from yandex_music import Client
 from dotenv import load_dotenv
@@ -11,6 +11,9 @@ import sqlalchemy
 from services.rooms_services import RoomsServices
 from services.users_services import UserServices
 from services.tokens_services import TokenServices
+
+from models.Users import Users
+from models.Rooms import Rooms
 
 from db.base import Database
 from wbs.websocket_manager import ConnectionManager
@@ -31,11 +34,82 @@ REDIRECT_URI = "http://localhost:8000/callback"
 client = Client(OAUTH_TOKEN).init()
 ws_routes = WebSocketRoutes(manager)
 
+
+@app.websocket("/ws/{room_id}/{user_id}")
+async def websocket_endpoint(websocket: WebSocket, room_id: str, user_id: str):
+    await ws_routes.handle_websocket(websocket, room_id, user_id)
+
+
 @app.get("/", response_class=HTMLResponse)
 async def player_page(request: Request):
     cookies = request.cookies
     print(cookies)
     return templates.TemplateResponse("player.html", {"request": request})
+
+
+@app.get("/join-room")
+async def join_room(room_id: str, request: Request):
+    return RedirectResponse(f"/room/{room_id}")
+
+
+@app.websocket("/room/{room_id}/ws")
+async def websocket_endpoint(
+    websocket: WebSocket,
+    room_id: str,
+    user_id: str = Cookie(None)
+):
+    if not user_id:
+        await websocket.close(code=4001, reason="User ID cookie required")
+        return
+    
+    await ws_routes.handle_websocket(websocket, room_id, user_id)
+
+@app.get("/room/{room_id}", response_class=HTMLResponse)
+async def get_room_page(request: Request, room_id: str):
+    # Проверяем существование комнаты
+    async with db.session_factory() as session:
+
+        room = await session.get(Rooms, room_id)
+        if not room:
+            raise HTTPException(status_code=404, detail="Room not found")
+    cookies = request.cookies
+    print(f'Cookie in room: {cookies}')
+    return templates.TemplateResponse("room.html", {
+        "request": request,
+        "room_id": room_id
+    })
+
+
+
+@app.get("/get_cookie")
+async def get_cookie(request: Request):
+    try:
+        cookies = request.cookies
+        print(f'after join: {cookies}')
+        return Response(
+        content=json.dumps(cookies),
+        status_code=200
+    )
+    except Exception as e:
+        return Response(
+        content=json.dumps({'error': str(e)}),
+        status_code=500
+    )
+
+@app.get("/auth/current-user")
+async def get_current_user(user_id: str = Cookie(None)):
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    async with db.session_factory() as session:
+        user = await session.get(Users, user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        return {
+            "id": user.id,
+            "username": user.username
+        }
 
 
 async def get_access_token(code: str):
@@ -52,34 +126,51 @@ async def get_access_token(code: str):
     response = requests.post(token_url, data=data)
     if response.status_code != 200:
         raise HTTPException(status_code=400, detail="Ошибка при получении токена")
-    print(response.json().get("access_token"))
+    print(response.json())
     return response.json().get("access_token")
 
 
 @app.post("/create_room")
-async def create_room(name_rooms: str, db: Database = Depends(Database)):
+async def create_room(request: Request, name_rooms: str = None, db: Database = Depends(Database)):
+    if not(name_rooms):
+        return Response(
+        content=json.dumps({'Status': 'Error', 'Message': 'Введите название комнаты'}),
+        status_code=500
+    )
+    cookies = request.cookies
+    # print(cookies)
+    if 'user_id' not in cookies and not(cookies['user_id']):
+        # print(1)
+        return Response(
+        content=json.dumps({'Status': 'Error', 'Message': 'Авторизуйтесь'}),
+        status_code=500
+    )
     resp = RoomsServices(db)
-    print(name_rooms)
+    user_model = UserServices(db)
+    # print(name_rooms)
     try:
-        done = await resp.create_room(name_rooms)
-        print(done)
+        done = await resp.create_room(name_rooms, cookies['user_id'])
+        op = await user_model.add_room(str(done['id']), cookies['user_id'])
+        # print(type(done))
     except sqlalchemy.exc.IntegrityError as e:
         return Response(
         content=json.dumps({'Status': 'Error', 'Message': str(e)}),
         status_code=500
     )
     done = await resp.get_all()
-    print(done)
+    # print(done)
     return Response(
         content=json.dumps(done),
         status_code=200
     )
 
 
-@app.post('/auth/sign-in')
-async def auth_login(request: Request, db: Database = Depends(Database)):
+@app.get('/auth/sign-in')
+async def auth_login(request: Request, response: Response, nickname: str, hashed_password: str, db: Database = Depends(Database)):
     try:
-        obj = await request.json()
+        # obj = await request.json()
+        obj = {'nickname': nickname,
+               'hashed_password': hashed_password}
 
         user_model = UserServices(db)
         token_model = TokenServices(db)
@@ -87,12 +178,26 @@ async def auth_login(request: Request, db: Database = Depends(Database)):
         user = await user_model.logging(obj)
 
         if user:
-            token = await token_model.new_token(obj=obj, user_id=user.id)
-            return {'status': 'Successfully', 'token': token}
+            # token = await token_model.new_token(obj=obj, user_id=user.id)
+            usr_id = user.id
+            response = JSONResponse(
+                content={'status': 'Successfully hui', 'user_id': str(usr_id)},
+                status_code=200
+            )
+            response.set_cookie(
+                key="user_id",
+                value=str(usr_id),
+                httponly=True,
+                secure=False,
+                samesite="lax",
+                domain="localhost",  # Явное указание домена
+                path="/"
+            )
+            return response
         return {'status': 'error', 'message': 'Неправильный логин или пароль'}
     except Exception as e:
         print(e)
-        return {'message': e}
+        return {'message': str(e)}
 
 @app.get("/stream")
 async def stream_audio(url: str):
@@ -176,6 +281,6 @@ if __name__ == "__main__":
     import uvicorn
     uvicorn.run(
         "main:app",
-        port=8001,
+        port=8000,
         reload=True,      # Автоперезагрузка при изменениях
     )

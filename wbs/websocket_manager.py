@@ -16,11 +16,32 @@ class ConnectionManager:
         await websocket.accept()
         if room_id not in self.active_connections:
             self.active_connections[room_id] = {}
+    
+    # Добавляем подключение
         self.active_connections[room_id][user_id] = websocket
+    
+    # Обновляем список участников в БД
+        participants = list(self.active_connections[room_id].keys())
+        await self.update_room_state(room_id, {
+            "list_of_participants": participants
+        })
+        await self.broadcast(room_id, {
+        "type": "participants_update",
+        "participants": participants
+        })
 
     async def disconnect(self, room_id: str, user_id: str):
         if room_id in self.active_connections and user_id in self.active_connections[room_id]:
             del self.active_connections[room_id][user_id]
+            participants = list(self.active_connections[room_id].keys()) if room_id in self.active_connections else []
+            if room_id in self.active_connections:  # Проверяем, что комната еще существует
+                await self.update_room_state(room_id, {
+                    "list_of_participants": participants
+                })
+                await self.broadcast(room_id, {
+                    "type": "participants_update",
+                    "participants": participants
+                })
             if not self.active_connections[room_id]:
                 del self.active_connections[room_id]
 

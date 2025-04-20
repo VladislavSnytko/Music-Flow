@@ -17,17 +17,23 @@ class WebSocketRoutes:
             return
 
         await self.manager.connect(websocket, room_id, user_id)
+        room_state = await self.manager.get_room_state(room_id)
         
         try:
             # Отправляем текущее состояние комнаты новому участнику
             await websocket.send_json({
                 "type": "init",
-                "room": room_state
+                "room": room_state,
+                'user_id': user_id
             })
+            if room_state["list_track"] and len(room_state["list_track"]) > 0:
+                await self.handle_play(room_id, user_id, {
+                    "position": room_state["time_moment"] or 0
+                })
         
             while True:
                 data = await websocket.receive_json()
-                
+                print(data)
                 if data["type"] == "play":
                     await self.handle_play(room_id, user_id, data)
                 elif data["type"] == "pause":
@@ -38,6 +44,11 @@ class WebSocketRoutes:
                     await self.handle_seek(room_id, user_id, data)
                 elif data["type"] == "add_participant":
                     await self.handle_add_participant(room_id, user_id)
+                elif data["type"] == "get_participants":
+                    await websocket.send_json({
+                "type": "participants_update",
+                "participants": list(self.manager.active_connections[room_id].keys())
+            })
                 
         except WebSocketDisconnect:
             await self.handle_disconnect(room_id, user_id)
