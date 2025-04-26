@@ -91,6 +91,6 @@ if __name__ == '__main__':
     d = Database()
     b = UserServices(d)
     
-    asyncio.run(b.create_new_user(email="example.com", password="12345", birthday="12.06.2005", username="sqlpmnt"))
+    asyncio.run(b.create_new_user(email="artem.com", password="1234567", birthday="12.06.2005", username="1neplay"))
     # asyncio.run(b.get_all())
     # b.create_database()

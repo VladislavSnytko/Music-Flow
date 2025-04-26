@@ -385,7 +385,7 @@
             fetch(`/stream?url=${encodeURIComponent(trackUrl)}`)
                 .then(response => {
                     const trackInfo = JSON.parse(response.headers.get('Track-Info'));
-
+                    console.log(trackInfo);
                     document.getElementById('title').textContent = trackInfo.title;
                     document.getElementById('artist').textContent = trackInfo.artist;
                     document.getElementById('cover').src = trackInfo.cover;

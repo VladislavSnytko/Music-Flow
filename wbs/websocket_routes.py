@@ -33,7 +33,7 @@ class WebSocketRoutes:
         
             while True:
                 data = await websocket.receive_json()
-                print(data)
+                # print(data)
                 if data["type"] == "play":
                     await self.handle_play(room_id, user_id, data)
                 elif data["type"] == "pause":
@@ -48,7 +48,14 @@ class WebSocketRoutes:
                     await websocket.send_json({
                 "type": "participants_update",
                 "participants": list(self.manager.active_connections[room_id].keys())
-            })
+                })
+                elif data["type"] == "load":
+                    await websocket.send_json({
+                "type": "load_track",
+                "url": list(self.manager.active_connections[room_id].keys())
+                })
+                    # print(1, list(self.manager.active_connections[room_id].keys()))
+
                 
         except WebSocketDisconnect:
             await self.handle_disconnect(room_id, user_id)
@@ -84,13 +91,18 @@ class WebSocketRoutes:
             "status_track": False,
             "time_moment": 0
         })
-        
+        print('hui zdes')
         await self.manager.broadcast(room_id, {
-            "type": "change_track",
-            "tracks": data["tracks"],
-            "index": data["index"],
-            "timestamp": datetime.now().timestamp()
-        }, exclude_user=user_id)
+            "type": "load_track",  # Было "load"
+            'url': data["tracks"][data["index"]]
+        })
+        
+        # await self.manager.broadcast(room_id, {
+        #     "type": "change_track",
+        #     "tracks": data["tracks"],
+        #     "index": data["index"],
+        #     "timestamp": datetime.now().timestamp()
+        # }, exclude_user=user_id)
 
     async def handle_seek(self, room_id: str, user_id: str, data: dict):
         await self.manager.update_room_state(room_id, {

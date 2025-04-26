@@ -22,6 +22,7 @@ class ConnectionManager:
     
     # Обновляем список участников в БД
         participants = list(self.active_connections[room_id].keys())
+        print(participants)
         await self.update_room_state(room_id, {
             "list_of_participants": participants
         })
@@ -46,6 +47,7 @@ class ConnectionManager:
                 del self.active_connections[room_id]
 
     async def broadcast(self, room_id: str, message: Dict, exclude_user: str = None):
+        print(message)
         if room_id in self.active_connections:
             for user_id, connection in self.active_connections[room_id].items():
                 if user_id != exclude_user:

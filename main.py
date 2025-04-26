@@ -29,9 +29,14 @@ templates = Jinja2Templates(directory="templates")
 OAUTH_TOKEN = os.getenv("OAUTH_TOKEN")
 CLIENT_ID = os.getenv("YANDEX_CLIENT_ID")
 CLIENT_SECRET = os.getenv("YANDEX_CLIENT_SECRET")
-REDIRECT_URI = "http://localhost:8000/callback"
-# Инициализация клиента Яндекс.Музыки
+# REDIRECT_URI = "http://localhost:8000/callback"
+REDIRECT_URI = "https://fjxp38df-8000.euw.devtunnels.ms/callback"
+DOMAIN = "idle-reflection-mills-suggestion.trycloudflare.com"
 client = Client(OAUTH_TOKEN).init()
+# DOMAIN = "localhost"
+# Инициализация клиента Яндекс.Музыки
+# client = Client(OAUTH_TOKEN).init()
+
 ws_routes = WebSocketRoutes(manager)
 
 
@@ -58,6 +63,7 @@ async def websocket_endpoint(
     room_id: str,
     user_id: str = Cookie(None)
 ):
+    print('hui rez')
     if not user_id:
         await websocket.close(code=4001, reason="User ID cookie required")
         return
@@ -188,9 +194,9 @@ async def auth_login(request: Request, response: Response, nickname: str, hashed
                 key="user_id",
                 value=str(usr_id),
                 httponly=True,
-                secure=False,
+                secure=True,
                 samesite="lax",
-                domain="localhost",  # Явное указание домена
+                domain=DOMAIN,  # Явное указание домена
                 path="/"
             )
             return response
@@ -198,11 +204,24 @@ async def auth_login(request: Request, response: Response, nickname: str, hashed
     except Exception as e:
         print(e)
         return {'message': str(e)}
+    
+
+@app.get("/callback")
+async def callback(code: str):
+    print(f'code: {code}')
+    """
+    Обработка перенаправления от Yandex и получение токена доступа.
+    """
+    global access_token
+    access_token = get_access_token(code)
+    return {"message": "Авторизация успешна", "access_token": access_token}
+
 
 @app.get("/stream")
 async def stream_audio(url: str):
     try:
         # Удаляем лишние параметры из URL
+        print(f'TOKEN: {OAUTH_TOKEN}')
         clean_url = url.split('?')[0]
         track_id = clean_url.split('track/')[1].split('/')[0]
         
@@ -235,11 +254,13 @@ async def stream_audio(url: str):
                     "cover": f"https://{track.cover_uri.replace('%%', '400x400')}"
                 }),
                 "Accept-Ranges": "bytes",
-                "Content-Length": str(len(response.content))  # Важно указать размер
+                "Content-Length": str(len(response.content)),  # Важно указать размер
+                "Content-Type": "audio/mpeg"
             }
         )
         
     except Exception as e:
+        print(e)
         return {"error": str(e)}
 # @app.get("/stream")
 # async def stream_audio(url: str):

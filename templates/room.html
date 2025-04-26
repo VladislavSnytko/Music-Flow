@@ -161,21 +161,27 @@
 
 <body>
     <div class="container">
-        <div class="player-card">
-            <div class="track-info">
+        <div>
+            <input type="text" id="track-url" placeholder="Вставьте ссылку на трек из Яндекс.Музыки">
+            <div class="controls">
+                <button id="load-btn" onclick="playTrack()">Загрузить трек</button>
+            </div>
+        </div>
+        <div id="player" class="hidden">
+            <div id="track-info">
                 <img id="cover" src="" alt="Обложка трека">
                 <h2 id="title">Название трека</h2>
                 <p id="artist">Исполнитель</p>
             </div>
-
+        
             <audio id="audio" controls preload="metadata"></audio>
-
+        
             <input type="range" id="progress" value="0" min="0" step="0.1">
-
+        
             <div class="controls">
-                <button class="control-btn" onclick="sendPlayCommand()">▶</button>
-                <button class="control-btn" onclick="sendPauseCommand()">⏸</button>
-                <button class="control-btn" onclick="stopTrack()">⏹</button>
+                <button id="play-btn" onclick="sendPlayCommand()">▶️ Воспроизвести</button>
+                <button id="pause-btn" onclick="sendPauseCommand()">⏸️ Пауза</button>
+                <button onclick="stopTrack()">⏹️ Стоп</button>
             </div>
         </div>
 
@@ -197,6 +203,9 @@
         const roomId = "{{ room_id }}";
         let socket;
         let userId;
+        const currentAudio = document.getElementById('audio');
+        let isSyncing = false;
+        let currentTrack = null;
         async function getCookie(name) {
                 let matches = await fetch(`/get_cookie`, {method:`GET`});
                 return await matches.json();
@@ -205,14 +214,14 @@
             userId = await getCookie('user_id');
             console.log(userId['user_id']);
             userId = userId['user_id'];
-            
+            console.log(1);
             if (!userId) {
                 alert('Требуется авторизация');
                 // window.location.href = '/login';
                 return;
             }
-
-            socket = new WebSocket(`ws://${window.location.host}/room/${roomId}/ws`);
+            console.log(window.location.host);
+            socket = new WebSocket(`wss://${window.location.host}/room/${roomId}/ws`);
 
             socket.onopen = () => {
                 console.log('Connected to room', roomId);
@@ -252,6 +261,9 @@
                 case 'participants_update':
                     updateParticipantsList(data.participants);
                     break;
+                case 'load_track':
+                    loadTrack(data.url);
+                    break
                 // ... другие типы сообщений
             }
         }
@@ -266,15 +278,60 @@
                     });
                 }
             }
+        function playTrack() {
+            
+                const url = document.getElementById('track-url').value.trim();
+                if (!url.includes('music.yandex.ru')) {
+                    alert('Пожалуйста, введите ссылку Яндекс.Музыки');
+                    return;
+                }
+
+                if (socket && socket.readyState === WebSocket.OPEN) {
+                    console.log(`socket open`);
+                    sendTrackChange(url);
+                } else {
+                    loadTrack(url);
+                }
+            }
+
+        function loadTrack(trackUrl, callback) {
+            console.log(`in load`);
+                if (!trackUrl) return;
+
+                currentTrack = trackUrl;
+                currentAudio.src = `/stream?url=${encodeURIComponent(trackUrl)}`;
+
+                fetch(`/stream?url=${encodeURIComponent(trackUrl)}`)
+                    .then(response => {
+                        const trackInfo = JSON.parse(response.headers.get('Track-Info'));
+                        console.log(trackInfo);
+                        document.getElementById('title').textContent = trackInfo.title;
+                        document.getElementById('artist').textContent = trackInfo.artist;
+                        document.getElementById('cover').src = trackInfo.cover;
+                        document.getElementById('player').classList.remove('hidden');
+
+                        // Добавляем обработчик для определения когда трек готов к воспроизведению
+                        currentAudio.oncanplay = () => {
+                            if (callback) callback();
+                            currentAudio.oncanplay = null;
+                        };
+                    })
+                    .catch(error => {
+                        console.error('Ошибка:', error);
+                        alert('Не удалось загрузить трек');
+                    });
+            }
         function handlePlayMessage(data) {
                 syncPlayback(true, data.position);
                 updatePlayerUI(true);
+                currentAudio.play();
             }
 
             // Обработка команды pause
             function handlePauseMessage(data) {
                 syncPlayback(false, data.position);
                 updatePlayerUI(false);
+                currentAudio.pause();
             }
 
             // Обработка смены трека
@@ -354,6 +411,7 @@
                             type: 'play',
                             position: currentAudio.currentTime
                         }));
+                        currentAudio.play();
                         updatePlayerUI(true);
                     }
                 }
@@ -364,6 +422,7 @@
                             type: 'pause',
                             position: currentAudio.currentTime
                         }));
+                        currentAudio.pause();
                         updatePlayerUI(false);
                     }
                 }
@@ -379,6 +438,7 @@
 
                 function sendTrackChange(trackUrl) {
                     if (socket && socket.readyState === WebSocket.OPEN) {
+                        console.log(3);
                         socket.send(JSON.stringify({
                             type: 'change_track',
                             tracks: [trackUrl],
