@@ -69,7 +69,7 @@ body {
 /* Контейнер контента */
 .content-container {
   max-width: 900px;
-  margin: 5rem auto;
+  margin: auto;
   padding: 2rem;
 }
 
@@ -103,7 +103,7 @@ body {
 /* Блок текста */
 .info-box {
   background-color: rgba(255, 255, 255, 0.1);
-  @apply text-2xl;
+  @apply text-xl;
   @apply leading-relaxed;
   border: 2px solid #00d9e7;
   padding: 3rem;
@@ -115,7 +115,7 @@ body {
 
 .tab-content ul {
   list-style: disc;
-  @apply text-2xl;
+  @apply text-xl;
   padding-left: 1.5rem;
   line-height: 1.75;
 }
@@ -270,4 +270,22 @@ body {
     opacity: 0;
     transform: rotateY(-90deg) scale(0.8);
   }
+}
+
+/* Анимации для формы */
+.form-transition-enter-active,
+.form-transition-leave-active {
+  transition: all 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.form-transition-enter-from,
+.form-transition-leave-to {
+  opacity: 0;
+  transform: translateY(20px) scale(0.95);
+}
+
+.form-transition-enter-to,
+.form-transition-leave-from {
+  opacity: 1;
+  transform: translateY(0) scale(1);
 }

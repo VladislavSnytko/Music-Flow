@@ -45,8 +45,8 @@
 <script setup>
 import { ref } from 'vue';
 import {onMounted, nextTick } from 'vue';
-import Logo from '@/components/logo.vue';
-import AccountIcon from '@/components/Account.vue';
+import Logo from '@/assets/logo.vue';
+import AccountIcon from '@/assets/Account.vue';
 import Button from '@/components/Button.vue';
 import { gsap } from "gsap/dist/gsap";
 

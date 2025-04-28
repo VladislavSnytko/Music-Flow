@@ -1,7 +1,35 @@
-<!-- <script setup>
-import LogoInLogin from '@/components/logo-in-login.vue'
-import AuthCard      from '@/components/auth-card.vue'
+<script setup>
+import { ref } from 'vue'
+import { gsap } from 'gsap'
+import LogoInLogin from '@/assets/logo-in-login.vue'
+import AuthForm from '@/components/auth-form.vue'
 
+const isLogin = ref(true)
+const formContainer = ref(null)
+
+function toggleForm() {
+  // Ждём 100ms чтобы кнопка Яндекс успела исчезнуть
+  setTimeout(() => {
+    gsap.to(formContainer.value, {
+      duration: 0.3,
+      scale: 0.95 ,
+      opacity: 0.8,
+      ease: 'power2.in',
+      onComplete: () => {
+        isLogin.value = !isLogin.value
+        gsap.fromTo(formContainer.value,
+          { scale: 1.05, opacity: 0.8 },
+          { 
+            duration: 0.4,
+            scale: 1,
+            opacity: 1,
+            ease: 'power2.out'
+          }
+        )
+      }
+    })
+  }, 100)
+}
 </script>
 
 <template>
@@ -10,64 +38,9 @@ import AuthCard      from '@/components/auth-card.vue'
       <LogoInLogin />
     </div>
     <div class="form-section">
-      <AuthCard />
-    </div>
-  </div>
-</template> -->
-
-
-<script setup>
-import { ref, onMounted } from 'vue'
-import { gsap } from "gsap/dist/gsap"
-import { Flip } from 'gsap/Flip';
-import LogoInLogin from '@/components/logo-in-login.vue'
-import AuthCard from '@/components/auth-card.vue'
-import RegistrationCard from '@/components/registration-card.vue'
-
-gsap.registerPlugin(Flip)
-import { animateFormTransition } from '@/animations/animateFormTransition'
-
-const currentForm = ref('login')
-const authCardRef = ref(null)
-const regCardRef = ref(null)
-
-const toggleForm = (type) => {
-  if (currentForm.value === type) return
-
-  const current = currentForm.value === 'login' ? authCardRef.value.$el : regCardRef.value.$el
-  const next = type === 'login' ? authCardRef.value.$el : regCardRef.value.$el
-
-  animateFormTransition(current, next, () => {
-    currentForm.value = type
-  })
-}
-// Инициализация позиций после монтирования
-
-onMounted(() => {
-  const buttons = document.querySelectorAll('.auth-button, .register-button');
-  if (buttons.length) {
-    gsap.set(buttons, { scale: 1 });
-  }
-})
-</script>
-
-<template>
-  <div class="login-container">
-    <div class="logo-section">
-      <LogoInLogin />
-    </div>
-    
-    <div class="form-section" ref="formContainer">
-      <AuthCard 
-        v-show="currentForm === 'login'"
-        ref="authCardRef"
-        @toggle="toggleForm('register')"
-      />
-      <RegistrationCard 
-        v-show="currentForm === 'register'"
-        ref="regCardRef"
-        @toggle="toggleForm('login')"
-      />
+      <div ref="formContainer">
+        <AuthForm :isLogin="isLogin" @toggle="toggleForm" />
+      </div>
     </div>
   </div>
 </template>
