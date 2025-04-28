@@ -44,9 +44,17 @@
 
 <script setup>
 import { ref } from 'vue';
+import {onMounted, nextTick } from 'vue';
 import Logo from '@/components/logo.vue';
 import AccountIcon from '@/components/Account.vue';
 import Button from '@/components/Button.vue';
+import { gsap } from "gsap/dist/gsap";
+
+onMounted(async () => {
+  await nextTick();
+  gsap.from('.content-container', { opacity: 0, y: 50, duration: 2, delay: 0.25, ease: 'power2.out' });
+});
+
 
 const currentTab = ref(0);
 

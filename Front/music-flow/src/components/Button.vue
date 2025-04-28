@@ -7,7 +7,7 @@
         <span class="text-gradient-layer">{{ text }}</span>
       </span>
     </button>
-  </template>
+</template>
   
   
   <script setup>
@@ -15,7 +15,7 @@
   const props = defineProps({
     text: {
       type: String,
-      default: 'Приступить'
+      default: 'Button text'
     },
     textSize: {
       type: String,
@@ -27,11 +27,16 @@
   <style scoped>
 /* Стили для кнопки */
 .button {
-  @apply flex items-center justify-center gap-2
+  /* @apply flex items-center justify-center gap-2
          bg-[#2EA48C]
          rounded-full
          shadow-[0px_0px_40px_5px_rgba(255,255,255,0.2)];
-  padding: 0.25em 1em;  
+         .auth-button { */
+         @apply inline-flex items-center justify-center
+         px-6 py-4 text-2xl font-bold text-white
+         bg-[rgba(50,208,177,0.75)]
+         rounded-full shadow-[0_0_40px_5px_rgba(255,255,255,0.2)];
+  padding: 0.6em 1.5em;  
   transition:
     background-color 0.5s cubic-bezier(0.4,0,0.2,1),
     box-shadow      0.5s cubic-bezier(0.4,0,0.2,1);
