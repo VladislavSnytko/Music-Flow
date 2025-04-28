@@ -92,6 +92,7 @@ class UserServices:
                 select(Users).where(Users.id == user_id)
             )
             token = result.scalar_one_or_none()
+            # print(f'toks = {token}')
             return token.yandex_token
 
         

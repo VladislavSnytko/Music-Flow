@@ -139,23 +139,39 @@
         }
 
         #progress {
-            width: 100%;
-            margin: 20px 0;
-        }
+    width: 100%;
+    margin: 20px 0;
+    -webkit-appearance: none;
+    height: 8px;
+    background: #ddd;
+    border-radius: 4px;
+    outline: none;
+}
 
-        .room-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
+#progress::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--primary-color);
+    cursor: pointer;
+}
 
-        .room-id {
-            font-family: monospace;
-            background: #eee;
-            padding: 5px 10px;
-            border-radius: 5px;
-        }
+#progress::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--primary-color);
+    cursor: pointer;
+}
+.time-display {
+    display: flex;
+    justify-content: space-between;
+    margin-top: -15px;
+    font-size: 12px;
+    color: #666;
+}
     </style>
 </head>
 
@@ -174,9 +190,13 @@
                 <p id="artist">Исполнитель</p>
             </div>
         
-            <audio id="audio" controls preload="metadata"></audio>
+            <audio id="audio" preload="metadata"></audio>
         
             <input type="range" id="progress" value="0" min="0" step="0.1">
+            <div class="time-display">
+                <span id="current-time">0:00</span>
+                <span id="duration">0:00</span>
+            </div>
         
             <div class="controls">
                 <button id="play-btn" onclick="sendPlayCommand()">▶️ Воспроизвести</button>
@@ -221,7 +241,9 @@
                 return;
             }
             console.log(window.location.host);
-            socket = new WebSocket(`wss://${window.location.host}/room/${roomId}/ws`);
+            const wsProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+            socket = new WebSocket(`${wsProtocol}${window.location.host}/room/${roomId}/ws`);
+
 
             socket.onopen = () => {
                 console.log('Connected to room', roomId);
@@ -243,8 +265,42 @@
 
         function handleSocketMessage(data) {
             switch (data.type) {
+                case 'request_current_time':
+                    // Отправляем текущее время с идентификатором запроса
+                    console.log(9, currentAudio.currentTime);
+                    socket.send(JSON.stringify({
+                        type: "current_time",
+                        position: currentAudio.currentTime,
+                        request_id: data.request_id  // Добавляем ID запроса
+                    }));
+                    break;
                 case 'init':
-                    handleInitMessage(data);
+                    // Обрабатываем все данные сразу
+                    if (data.track_url) {
+                        loadTrack(data.track_url, () => {
+                            currentAudio.currentTime = data.current_time;
+                            if (data.is_playing) {
+                                currentAudio.play().catch(e => console.log('Play error:', e));
+                                updatePlayerUI(true);
+                            } else {
+                                currentAudio.pause();
+                                updatePlayerUI(false);
+                            }
+                        });
+                    }
+                    updateParticipantsList(data.room.list_of_participants);
+                    break;
+                case 'track_state':  // Новый тип сообщения
+                    loadTrack(data.url, () => {
+                        currentAudio.currentTime = data.position;
+                        if (data.is_playing) {
+                            currentAudio.play().catch(e => console.log('Play error:', e));
+                            updatePlayerUI(true);
+                        } else {
+                            currentAudio.pause();
+                            updatePlayerUI(false);
+                        }
+                    });
                     break;
                 case 'play':
                     handlePlayMessage(data);
@@ -268,15 +324,24 @@
             }
         }
         function handleInitMessage(data) {
-            // console.log(data.room.list_of_participants);
-
                 updateParticipantsList(data.room.list_of_participants);
-
+                
                 if (data.room.list_track && data.room.list_track.length > 0) {
+                    
                     loadTrack(data.room.list_track[data.room.index_track], () => {
-                        syncPlayback(data.room.status_track, data.room.time_moment);
+                        // Устанавливаем текущую позицию и статус воспроизведения
+                        console.log(9, data.room.list_track.length > 0);
+                        currentAudio.currentTime = data.room.time_moment || 0;
+                        if (data.is_playing) {
+                            currentAudio.play().catch(e => console.log('Play error:', e));
+                            updatePlayerUI(true);
+                        } else {
+                            currentAudio.pause();
+                            updatePlayerUI(false);
+                        }
                     });
                 }
+                
             }
         function playTrack() {
             
@@ -312,7 +377,7 @@
 
                         // Добавляем обработчик для определения когда трек готов к воспроизведению
                         currentAudio.oncanplay = () => {
-                            if (callback) callback();
+                            callback();
                             currentAudio.oncanplay = null;
                         };
                     })
@@ -342,7 +407,10 @@
             }
             function handleSeekMessage(data) {
                     if (!isSyncing) {
+                        isSyncing = true;
                         currentAudio.currentTime = data.position;
+                        document.getElementById('progress').value = data.position;
+                        setTimeout(() => { isSyncing = false; }, 100);
                     }
                 }
 
@@ -464,6 +532,69 @@
                 `<li>${p}</li>`
             ).join('');
         }
+        document.getElementById('progress').addEventListener('input', function (e) {
+                if (!isSyncing) {
+                    const newPosition = parseFloat(e.target.value);
+                    currentAudio.currentTime = newPosition;
+                    sendSeekCommand(newPosition); // Отправляем новую позицию на сервер
+                }
+            });
+
+            // Обновление ползунка во время воспроизведения
+            currentAudio.addEventListener('timeupdate', function () {
+                if (!isSyncing) {
+                    document.getElementById('progress').value = currentAudio.currentTime;
+                }
+            });
+
+            // Обновление max значения при загрузке трека
+            currentAudio.addEventListener('loadedmetadata', function () {
+                document.getElementById('progress').max = currentAudio.duration;
+            });
+
+            // Модифицированная функция sendSeekCommand
+            function sendSeekCommand(position) {
+                if (socket && socket.readyState === WebSocket.OPEN) {
+                    socket.send(JSON.stringify({
+                        type: 'seek',
+                        position: position
+                    }));
+                }
+            }
+            currentAudio.addEventListener('timeupdate', function () {
+                    if (!isSyncing) {
+                        document.getElementById('progress').value = currentAudio.currentTime;
+                        updateTimeDisplay();
+                    }
+                });
+
+                // В функции currentAudio.addEventListener('loadedmetadata', function () {
+                currentAudio.addEventListener('loadedmetadata', function () {
+                    document.getElementById('progress').max = currentAudio.duration;
+                    updateTimeDisplay();
+                });
+
+                // Добавьте новую функцию для обновления отображения времени
+                function updateTimeDisplay() {
+                    const currentTime = document.getElementById('current-time');
+                    const duration = document.getElementById('duration');
+
+                    currentTime.textContent = formatTime(currentAudio.currentTime);
+                    duration.textContent = formatTime(currentAudio.duration);
+                }
+
+                // Функция для форматирования времени (секунды в мм:сс)
+                function formatTime(seconds) {
+                    const minutes = Math.floor(seconds / 60);
+                    const secs = Math.floor(seconds % 60);
+                    return `${minutes}:${secs < 10 ? '0' : ''}${secs}`;
+                }
+
+                // Вызовите updateTimeDisplay() при загрузке страницы
+                document.addEventListener('DOMContentLoaded', function () {
+                    initWebSocket();
+                    updateTimeDisplay();
+                });
 
         document.addEventListener('DOMContentLoaded', initWebSocket);
     </script>

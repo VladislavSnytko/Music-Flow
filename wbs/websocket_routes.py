@@ -1,147 +1,186 @@
-# websocket_routes.py
+import asyncio
+import uuid
 from fastapi import WebSocket, WebSocketDisconnect
-from datetime import datetime
-import json
-from .websocket_manager import ConnectionManager
+from .websocket_manager import ConnectionManager  # Импортируй правильно свой файл!
 
 class WebSocketRoutes:
     def __init__(self, manager: ConnectionManager):
         self.manager = manager
+        self.message_queues = {}
+        self.time_responses = {}
 
     async def handle_websocket(self, websocket: WebSocket, room_id: str, user_id: str):
-        # Проверяем существование комнаты
         try:
             room_state = await self.manager.get_room_state(room_id)
-        except:
+        except Exception:
             await websocket.close(code=1008, reason="Room not found")
             return
 
         await self.manager.connect(websocket, room_id, user_id)
-        room_state = await self.manager.get_room_state(room_id)
-        
+
+        # Создаем очередь сообщений
+        message_queue = asyncio.Queue()
+        self.message_queues[websocket] = message_queue
+
+        reader_task = asyncio.create_task(self._message_reader(websocket, message_queue))
         try:
-            # Отправляем текущее состояние комнаты новому участнику
-            await websocket.send_json({
-                "type": "init",
-                "room": room_state,
-                'user_id': user_id
-            })
-            if room_state["list_track"] and len(room_state["list_track"]) > 0:
-                await self.handle_play(room_id, user_id, {
-                    "position": room_state["time_moment"] or 0
-                })
-        
+            # Получаем актуальное время
+            current_position = await self._get_consensus_time(room_id, exclude_user=user_id)
+
+            await self.manager.update_room_state(room_id, {"time_moment": current_position})
+            room_state["time_moment"] = current_position
+
+            await self._send_initial_state(websocket, room_state, user_id)
+
+            # Обрабатываем входящие сообщения
+            while True:
+                data = await message_queue.get()
+                await self._handle_message(data, websocket, room_id, user_id)
+
+        except WebSocketDisconnect:
+            pass
+        finally:
+            await self.manager.disconnect(room_id, user_id)
+            reader_task.cancel()
+            self.message_queues.pop(websocket, None)
+
+    async def _message_reader(self, websocket: WebSocket, queue: asyncio.Queue):
+        try:
             while True:
                 data = await websocket.receive_json()
-                # print(data)
-                if data["type"] == "play":
-                    await self.handle_play(room_id, user_id, data)
-                elif data["type"] == "pause":
-                    await self.handle_pause(room_id, user_id, data)
-                elif data["type"] == "change_track":
-                    await self.handle_change_track(room_id, user_id, data)
-                elif data["type"] == "seek":
-                    await self.handle_seek(room_id, user_id, data)
-                elif data["type"] == "add_participant":
-                    await self.handle_add_participant(room_id, user_id)
-                elif data["type"] == "get_participants":
-                    await websocket.send_json({
-                "type": "participants_update",
-                "participants": list(self.manager.active_connections[room_id].keys())
-                })
-                elif data["type"] == "load":
-                    await websocket.send_json({
-                "type": "load_track",
-                "url": list(self.manager.active_connections[room_id].keys())
-                })
-                    # print(1, list(self.manager.active_connections[room_id].keys()))
+                await queue.put(data)
+        except Exception:
+            pass  # Выход из ридера на разрыве соединения
 
-                
-        except WebSocketDisconnect:
-            await self.handle_disconnect(room_id, user_id)
+    async def _get_consensus_time(self, room_id: str, exclude_user: str) -> float:
+        # Запрашиваем время у всех участников
+        await self.manager.get_current_playback_time(room_id, exclude_user)
 
-    async def handle_play(self, room_id: str, user_id: str, data: dict):
-        await self.manager.update_room_state(room_id, {
-            "status_track": True,
-            "time_moment": data.get("position", 0)
-        })
-        
-        await self.manager.broadcast(room_id, {
-            "type": "play",
-            "position": data.get("position", 0),
-            "timestamp": datetime.now().timestamp()
-        }, exclude_user=user_id)
+        # Ждём ответы (например, 1 секунду)
+        await asyncio.sleep(1.0)
 
-    async def handle_pause(self, room_id: str, user_id: str, data: dict):
-        await self.manager.update_room_state(room_id, {
-            "status_track": False,
-            "time_moment": data.get("position", 0)
-        })
-        
-        await self.manager.broadcast(room_id, {
-            "type": "pause",
-            "position": data.get("position", 0),
-            "timestamp": datetime.now().timestamp()
-        }, exclude_user=user_id)
+        # Собираем все ответы
+        if room_id not in self.time_responses:
+            return 0.0
 
-    async def handle_change_track(self, room_id: str, user_id: str, data: dict):
-        await self.manager.update_room_state(room_id, {
-            "list_track": data["tracks"],
-            "index_track": data["index"],
-            "status_track": False,
-            "time_moment": 0
-        })
-        print('hui zdes')
-        await self.manager.broadcast(room_id, {
-            "type": "load_track",  # Было "load"
-            'url': data["tracks"][data["index"]]
-        })
-        
-        # await self.manager.broadcast(room_id, {
-        #     "type": "change_track",
-        #     "tracks": data["tracks"],
-        #     "index": data["index"],
-        #     "timestamp": datetime.now().timestamp()
-        # }, exclude_user=user_id)
+        responses = self.time_responses[room_id].values()
+        if not responses:
+            return 0.0
 
-    async def handle_seek(self, room_id: str, user_id: str, data: dict):
-        await self.manager.update_room_state(room_id, {
-            "time_moment": data["position"]
-        })
-        
-        await self.manager.broadcast(room_id, {
-            "type": "seek",
-            "position": data["position"],
-            "timestamp": datetime.now().timestamp()
-        }, exclude_user=user_id)
+        # Берём среднее время (или первый ответ)
+        avg_time = sum(responses) / len(responses)
+        return avg_time
+    # async def _get_consensus_time(self, room_id: str, exclude_user: str) -> float:
+    #     connections = [
+    #         conn for uid, conn in self.manager.active_connections.get(room_id, {}).items()
+    #         if uid != exclude_user
+    #     ]
+    #     print(connections)
+    #     if not connections:
+    #         return 0.0
 
-    async def handle_add_participant(self, room_id: str, user_id: str):
-        room_state = await self.manager.get_room_state(room_id)
-        if user_id not in room_state["list_of_participants"]:
+    #     tasks = [asyncio.create_task(self._request_current_time(conn)) for conn in connections]
+
+
+    #     try:
+    #         done, _ = await asyncio.wait(tasks, timeout=7.0, return_when=asyncio.FIRST_COMPLETED)
+    #         for task in done:
+    #             result = await task
+    #             print(result)
+    #             if result is not None:
+    #                 return result
+    #     except Exception as e:
+    #         print('ERROR FROM _get_consensus_time:', e)
+    #         pass
+
+    #     return 0.0
+
+    # async def _request_current_time(self, connection: WebSocket):
+    #     try:
+    #         await connection.send_json({"type": "request_current_time"})
+    #         response = await asyncio.wait_for(connection.receive_json(), timeout=1.0)
+    #         print('resp:', response)
+    #         if response.get("type") == "current_time":
+    #             return response.get("position", 0.0)
+    #     except Exception as e:
+    #         print('ERROR FROM _request_current_time:', e)
+
+    async def _send_initial_state(self, websocket: WebSocket, room_state: dict, user_id: str):
+        message = {
+            "type": "init",
+            "room": room_state,
+            "user_id": user_id,
+            "current_time": room_state.get("time_moment", 0),
+            "is_playing": room_state.get("status_track", False)
+        }
+
+        if room_state.get("list_track") and len(room_state["list_track"]) > 0:
+            message.update({
+                "track_url": room_state["list_track"][room_state["index_track"]],
+            })
+
+        await websocket.send_json(message)
+
+    async def _handle_message(self, data: dict, websocket: WebSocket, room_id: str, user_id: str):
+        if not isinstance(data, dict) or "type" not in data:
+            return  # Игнорируем некорректные данные
+
+        msg_type = data["type"]
+
+        if msg_type == "current_time":
+            if room_id not in self.time_responses:
+                self.time_responses[room_id] = {}
+            self.time_responses[room_id][user_id] = data.get("position", 0.0)
+            return  # Просто ответ на запрос времени
+
+        if msg_type == "play":
             await self.manager.update_room_state(room_id, {
-                "list_of_participants": [*room_state["list_of_participants"], user_id]
+                "status_track": True,
+                "time_moment": data.get("position", 0)
             })
-            
             await self.manager.broadcast(room_id, {
+                "type": "play",
+                "position": data.get("position", 0)
+            }, exclude_user=user_id)
+
+        elif msg_type == "pause":
+            await self.manager.update_room_state(room_id, {
+                "status_track": False,
+                "time_moment": data.get("position", 0)
+            })
+            await self.manager.broadcast(room_id, {
+                "type": "pause",
+                "position": data.get("position", 0)
+            }, exclude_user=user_id)
+
+        elif msg_type == "seek":
+            await self.manager.update_room_state(room_id, {
+                "time_moment": data.get("position", 0)
+            })
+            await self.manager.broadcast(room_id, {
+                "type": "seek",
+                "position": data.get("position", 0)
+            }, exclude_user=user_id)
+
+        elif msg_type == "change_track":
+            tracks = data.get("tracks", [])
+            index = data.get("index", 0)
+            if tracks:
+                await self.manager.update_room_state(room_id, {
+                    "list_track": tracks,
+                    "index_track": index,
+                    "status_track": False,
+                    "time_moment": 0
+                })
+                await self.manager.broadcast(room_id, {
+                    "type": "load_track",
+                    "url": tracks[index]
+                })
+
+        elif msg_type == "get_participants":
+            participants = list(self.manager.active_connections.get(room_id, {}).keys())
+            await websocket.send_json({
                 "type": "participants_update",
-                "participants": [*room_state["list_of_participants"], user_id]
+                "participants": participants
             })
 
-    async def handle_disconnect(self, room_id: str, user_id: str):
-        await self.manager.disconnect(room_id, user_id)
-        room_state = await self.manager.get_room_state(room_id)
-        if user_id in room_state["list_of_participants"]:
-            await self.manager.update_room_state(room_id, {
-                "list_of_participants": [
-                    uid for uid in room_state["list_of_participants"] 
-                    if uid != user_id
-                ]
-            })
-            
-            await self.manager.broadcast(room_id, {
-                "type": "participants_update",
-                "participants": [
-                    uid for uid in room_state["list_of_participants"] 
-                    if uid != user_id
-                ]
-            })

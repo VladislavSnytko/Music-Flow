@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException, Request, Depends, WebSocket, Response, Cookie
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, Response, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from fastapi.middleware.cors import CORSMiddleware
 from yandex_music import Client
 from dotenv import load_dotenv
 import requests
@@ -23,6 +24,13 @@ from wbs.websocket_routes import WebSocketRoutes
 
 load_dotenv()
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Или конкретный домен, например ["http://localhost:5173"]
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 db = Database()
 manager = ConnectionManager(db)
 templates = Jinja2Templates(directory="templates")
@@ -31,8 +39,8 @@ CLIENT_ID = os.getenv("YANDEX_CLIENT_ID")
 CLIENT_SECRET = os.getenv("YANDEX_CLIENT_SECRET")
 # REDIRECT_URI = "http://localhost:8000/callback"
 REDIRECT_URI = "https://fjxp38df-8000.euw.devtunnels.ms/callback"
-DOMAIN = "idle-reflection-mills-suggestion.trycloudflare.com"
-client = Client(OAUTH_TOKEN).init()
+DOMAIN = "uniform-connections-scroll-cloud.trycloudflare.com"
+# client = Client(OAUTH_TOKEN).init()
 # DOMAIN = "localhost"
 # Инициализация клиента Яндекс.Музыки
 # client = Client(OAUTH_TOKEN).init()
@@ -63,7 +71,7 @@ async def websocket_endpoint(
     room_id: str,
     user_id: str = Cookie(None)
 ):
-    print('hui rez')
+    # print('hui rez')
     if not user_id:
         await websocket.close(code=4001, reason="User ID cookie required")
         return
@@ -79,7 +87,7 @@ async def get_room_page(request: Request, room_id: str):
         if not room:
             raise HTTPException(status_code=404, detail="Room not found")
     cookies = request.cookies
-    print(f'Cookie in room: {cookies}')
+    # print(f'Cookie in room: {cookies}')
     return templates.TemplateResponse("room.html", {
         "request": request,
         "room_id": room_id
@@ -91,7 +99,7 @@ async def get_room_page(request: Request, room_id: str):
 async def get_cookie(request: Request):
     try:
         cookies = request.cookies
-        print(f'after join: {cookies}')
+        # print(f'after join: {cookies}')
         return Response(
         content=json.dumps(cookies),
         status_code=200
@@ -129,10 +137,11 @@ async def get_access_token(code: str):
         "client_id": CLIENT_ID,
         "client_secret": CLIENT_SECRET,
     }
+    print('response')
     response = requests.post(token_url, data=data)
     if response.status_code != 200:
         raise HTTPException(status_code=400, detail="Ошибка при получении токена")
-    print(response.json())
+    # print(response.json())
     return response.json().get("access_token")
 
 
@@ -187,14 +196,14 @@ async def auth_login(request: Request, response: Response, nickname: str, hashed
             # token = await token_model.new_token(obj=obj, user_id=user.id)
             usr_id = user.id
             response = JSONResponse(
-                content={'status': 'Successfully hui', 'user_id': str(usr_id)},
+                content=json.dumps({'status': 'Successfully hui', 'user_id': str(usr_id)}),
                 status_code=200
             )
             response.set_cookie(
                 key="user_id",
                 value=str(usr_id),
                 httponly=True,
-                secure=True,
+                secure=False,
                 samesite="lax",
                 domain=DOMAIN,  # Явное указание домена
                 path="/"
@@ -208,20 +217,26 @@ async def auth_login(request: Request, response: Response, nickname: str, hashed
 
 @app.get("/callback")
 async def callback(code: str):
-    print(f'code: {code}')
+    # print(f'code: {code}')
     """
     Обработка перенаправления от Yandex и получение токена доступа.
     """
     global access_token
-    access_token = get_access_token(code)
+    access_token = await get_access_token(code)
     return {"message": "Авторизация успешна", "access_token": access_token}
 
 
 @app.get("/stream")
-async def stream_audio(url: str):
+async def stream_audio(url: str, request: Request):
     try:
-        # Удаляем лишние параметры из URL
-        print(f'TOKEN: {OAUTH_TOKEN}')
+        # # Удаляем лишние параметры из URL
+        # print(f'TOKEN: {OAUTH_TOKEN}')
+        user_id = request.cookies['user_id']
+        user_model = UserServices(db)
+        yan_tok = await user_model.get_yandex_token_by_user_id(user_id=user_id)
+        # print(f'Token from bd: {yan_tok}')
+        print(f'{user_id} - {yan_tok}')
+        client = Client(yan_tok if yan_tok else OAUTH_TOKEN).init()
         clean_url = url.split('?')[0]
         track_id = clean_url.split('track/')[1].split('/')[0]
         
