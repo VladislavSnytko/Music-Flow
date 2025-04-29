@@ -10,8 +10,7 @@
     <div class="form-button">
       <Button text="Войти" textSize="37px" />
     </div>
-
-    <!-- <div id="yandex-login" class="yandex-id"></div> -->
+    
     <YandexButton />
     <div class="login-bottom-text cursor-pointer" @click="toggleForm">
         Регистрация

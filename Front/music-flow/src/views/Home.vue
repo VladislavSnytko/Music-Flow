@@ -1,3 +1,65 @@
+<script setup>
+import { ref } from 'vue';
+import {onMounted, nextTick } from 'vue';
+import Logo from '@/assets/logo.vue';
+import AccountIcon from '@/assets/Account.vue';
+import Button from '@/components/Button.vue';
+import { gsap } from "gsap/dist/gsap";
+
+onMounted(async () => {
+  await nextTick();
+  gsap.from('.content-container', { opacity: 0, y: 50, duration: 2, delay: 0.25, ease: 'power2.out' });
+});
+
+
+const currentTab = ref(0);
+
+const tabs = [
+  {
+    title: 'О сервисе',
+    content: `
+      <p>Music Flow — это сервис, который позволяет слушать музыку в компании друзей на разных устройствах, создавая общую очередь треков с возможностью глубокой кастомизации порядка воспроизведения.</p>
+      <p>Сервис ориентирован на расширение возможностей стримингового сервиса Яндекс.Музыка и предоставляет пользователям новый опыт прослушивания музыки вместе — будь то вечеринки, поездки, игры или просто общение в социальных сетях.</p>`
+  },
+  {
+    title: 'О проекте',
+    content: `
+      <ul>
+        <li>Создавайте общую очередь воспроизведения</li>
+        <li>Гибкая кастомизация и тайминги</li>
+        <li>Синхронизация между устройствами</li>
+        <li>Интуитивно понятный интерфейс</li>
+      </ul>`
+  },
+  {
+    title: 'Функционал',
+    content: `
+      <ul>
+        <li>Общий доступ к трекам</li>
+        <li>Изменение порядка и приоритета песен</li>
+        <li>Синхронное воспроизведение на всех устройствах</li>
+      </ul>`
+  }
+];
+let dom = window.location.hostname;
+console.log(dom);
+let matches = fetch(`https://uniform-connections-scroll-cloud.trycloudflare.com/auth/sign-in?nickname=ch1l&hashed_password=5994471abb01112afcc18159f6cc74b4f511b99806da59b3caf5a9c173cacfc5&domen=${dom}`, { method: 'GET'});
+console.log(matches);
+
+// let matches = await fetch("/https://uniform-connections-scroll-cloud.trycloudflare.com/auth/sign-in?nickname=ch1l&hashed_password=5994471abb01112afcc18159f6cc74b4f511b99806da59b3caf5a9c173cacfc5", {method:GET});
+
+// async function getCookie(name) {
+//                 let matches = await fetch("/https://uniform-connections-scroll-cloud.trycloudflare.com/get_cookie", {method:GET});
+//                 return await matches.json();
+//             }
+</script>
+
+
+
+
+
+
+
 <template>
   <div class="app-background">
     <!-- Header -->
@@ -41,48 +103,3 @@
     </main>
   </div>
 </template>
-
-<script setup>
-import { ref } from 'vue';
-import {onMounted, nextTick } from 'vue';
-import Logo from '@/components/logo.vue';
-import AccountIcon from '@/components/Account.vue';
-import Button from '@/components/Button.vue';
-import { gsap } from "gsap/dist/gsap";
-
-onMounted(async () => {
-  await nextTick();
-  gsap.from('.content-container', { opacity: 0, y: 50, duration: 2, delay: 0.25, ease: 'power2.out' });
-});
-
-
-const currentTab = ref(0);
-
-const tabs = [
-  {
-    title: 'О сервисе',
-    content: `
-      <p>Music Flow — это сервис, который позволяет слушать музыку в компании друзей на разных устройствах, создавая общую очередь треков с возможностью глубокой кастомизации порядка воспроизведения.</p>
-      <p>Сервис ориентирован на расширение возможностей стримингового сервиса Яндекс.Музыка и предоставляет пользователям новый опыт прослушивания музыки вместе — будь то вечеринки, поездки, игры или просто общение в социальных сетях.</p>`
-  },
-  {
-    title: 'О проекте',
-    content: `
-      <ul>
-        <li>Создавайте общую очередь воспроизведения</li>
-        <li>Гибкая кастомизация и тайминги</li>
-        <li>Синхронизация между устройствами</li>
-        <li>Интуитивно понятный интерфейс</li>
-      </ul>`
-  },
-  {
-    title: 'Функционал',
-    content: `
-      <ul>
-        <li>Общий доступ к трекам</li>
-        <li>Изменение порядка и приоритета песен</li>
-        <li>Синхронное воспроизведение на всех устройствах</li>
-      </ul>`
-  }
-];
-</script>

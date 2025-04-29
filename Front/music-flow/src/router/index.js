@@ -16,8 +16,21 @@ const routes = [
     component: Login,
     meta: { requiresAuth: false },
   },
-  // Здесь позже добавим роут для комнат
+  {
+    path: '/yandex-callback',
+    name: 'YandexCallback',
+    component: () => import('@/components/YandexCallback.vue')
+  },
+  // router/index.js
+{
+  path: '/main',
+  name: 'Main',
+  component: () => import('../views/Main.vue'),
+  meta: { requiresAuth: true }
+}
+
 ]
+
 
 const router = createRouter({
   history: createWebHistory(),

@@ -1,81 +1,54 @@
-import { gsap } from "gsap/dist/gsap";
-import { Flip } from "gsap/dist/Flip";
+import { gsap } from 'gsap'
 
-gsap.registerPlugin(Flip);
+export function animateFormTransition(container, currentEl, nextEl) {
+  if (!container || !currentEl || !nextEl) return
 
-export function animateFormTransition(currentEl, nextEl, onComplete) {
-  if (!currentEl || !nextEl) return;
+  // 1) Засекаем стартовую высоту контейнера
+  const startHeight = container.offsetHeight
 
-  // Подготовка элементов перед анимацией
-  nextEl.style.display = 'block';
-  nextEl.style.opacity = '0';
-  nextEl.style.transform = 'translateY(20px)';
-  
-  // Сохраняем начальное состояние
-  const state = Flip.getState([currentEl, nextEl], {
-    props: "opacity, transform",
-    simple: true
-  });
+  // 2) Подготовка «новой» карточки: сделать её видимой, но скрыть контент
+  nextEl.style.position = 'absolute'
+  nextEl.style.visibility = 'hidden'
+  nextEl.style.display    = 'block'
 
-  // Анимация исчезновения текущей формы
+  // 3) Засекаем конечную высоту контейнера
+  const endHeight = nextEl.offsetHeight
+
+  // 4) Восстанавливаем nextEl в нормальное состояние
+  nextEl.style.position   = ''
+  nextEl.style.visibility = ''
+  nextEl.style.display    = ''
+
+  // 5) Плавно анимируем высоту контейнера
+  gsap.fromTo(container,
+    { height: startHeight },
+    { height: endHeight, duration: 0.5, ease: 'power1.inOut' }
+  )
+
+  // 6) Анимируем «исчезновение» старой карточки
   gsap.to(currentEl, {
     opacity: 0,
     duration: 0.3,
-    ease: "power2.in",
+    ease: 'power2.in',
     onComplete: () => {
-      currentEl.style.display = 'none';
+      currentEl.style.display = 'none'
     }
-  });
+  })
 
-  // Анимация появления новой формы с задержкой
-  gsap.fromTo(nextEl, 
-    { 
-      opacity: 0,
-      y: 30,
-      scale: 0.98
-    },
+  // 7) Анимируем «появление» новой карточки
+  gsap.fromTo(nextEl,
+    { opacity: 0, y: 20, scale: 0.98 },
     {
       opacity: 1,
       y: 0,
       scale: 1,
-      duration: 0.5,
-      delay: 0.2,
-      ease: "back.out(1.2)",
+      duration: 0.4,
+      delay: 0.3,
+      ease: 'back.out(1.2)',
       onComplete: () => {
-        onComplete?.();
+        // Сброс inline-стиля высоты, чтобы контейнер мог подстраиваться дальше
+        container.style.height = 'auto'
       }
     }
-  );
-
-  // // Дополнительные эффекты для элементов формы
-  // const inputs = nextEl.querySelectorAll('.auth-input');
-  // gsap.from(inputs, {
-  //   opacity: 0,
-  //   y: 10,
-  //   stagger: 0.05,
-  //   duration: 0.3,
-  //   delay: 0.4,
-  //   ease: "power2.out"
-  // });
-
-  // const button = nextEl.querySelector('.form-button');
-  // if (button) {
-  //   gsap.from(button, {
-  //     opacity: 0,
-  //     y: 10,
-  //     duration: 0.3,
-  //     delay: 0.5,
-  //     ease: "power2.out"
-  //   });
-  // }
-
-  // const bottomText = nextEl.querySelector('.login-bottom-text');
-  // if (bottomText) {
-  //   gsap.from(bottomText, {
-  //     opacity: 0,
-  //     duration: 0.3,
-  //     delay: 0.6,
-  //     ease: "power2.out"
-  //   });
-  // }
+  )
 }
