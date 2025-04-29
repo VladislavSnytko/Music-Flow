@@ -1,11 +1,12 @@
 import asyncio
 
 import sqlalchemy
-from sqlalchemy import select
+from sqlalchemy import select, or_, and_
 
 from models.Users import Users  # Импорт всех моделей
+from models.Tokens import Tokens
 
-from db.base import Database, Base
+from db.base import Database
 # from db.base import engine, Base, AsyncSession
 
 from pydantic import EmailStr
@@ -21,7 +22,7 @@ class UserServices:
         self.db = db
 
 
-    async def create_token(obj):
+    async def create_token(self, obj):
         secret_key = secrets.token_urlsafe(20)
 
         token = jwt.encode(obj, secret_key, algorithm='HS256')
@@ -59,17 +60,46 @@ class UserServices:
                 rooms_list=rooms_list,
                 yandex_token=yandex_token
             )
+            # new_user_friends = 
 
         session.add(new_user)
         await session.commit()
 
         return {'Status': 'Successfully'}
+    
+    async def logging(self, obj: dict):
+        async with self.db.session_factory() as session:
+            print(obj)
+            if 'yandex_token' in obj:
+                result = await session.execute(select(Users).where(Users.yandex_token == obj['yandex_token']))
+            else:
+                result = await session.execute(select(Users).where(and_(or_(Users.email == obj['nickname'],Users.username == obj['nickname']), 
+                                                                   Users.hashed_password == obj['hashed_password'])))
+            user = result.scalar_one_or_none()
+
+            if user:
+                return user
+            return None
+        
+    async def add_room(self, room_id: str, user_id: str):
+        async with self.db.session_factory() as session:
+            result = await session.execute(select(Users).where(Users.id == user_id))
+            print(type(result))
+    
+    async def get_yandex_token_by_user_id(self, user_id: str):
+        async with self.db.session_factory() as session:
+            result = await session.execute(
+                select(Users).where(Users.id == user_id)
+            )
+            token = result.scalar_one_or_none()
+            # print(f'toks = {token}')
+            return token.yandex_token
 
         
 if __name__ == '__main__':
     d = Database()
     b = UserServices(d)
     
-    # asyncio.run(b.create_new_user(email="example@yandex.ru", password="12345", birthday="12.06.2005", username="Stpdbdbldr"))
-    asyncio.run(b.get_all())
+    # asyncio.run(b.create_new_user(email="artem.com", password="1234567", birthday="12.06.2005", username="1neplay"))
+    asyncio.run(b.get_yandex_token_by_user_id('d63709db-3ec0-433c-b549-a49e771778f1'))
     # b.create_database()

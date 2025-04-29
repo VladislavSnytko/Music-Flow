@@ -17,7 +17,7 @@ class Users(Base):
         nullable=False
     )
     email: str = Column(String, unique=True, nullable=False)
-    hashed_password: str = Column(String, unique=True, nullable=False)
+    hashed_password: str = Column(String, nullable=False)
     username: str = Column(String, unique=True, nullable=False)
     birthday: str = Column(String, nullable=False)
     rooms_list: list = Column(ARRAY(String))
