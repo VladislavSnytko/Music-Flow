@@ -4,7 +4,7 @@ import { gsap } from 'gsap';
 import { useRouter } from 'vue-router';
 import LogoInLogin from '@/assets/logo-in-login.vue';
 import AuthForm from '@/components/auth-form.vue';
-// import YandexButton from '@/components/yandex-button.vue';
+import YandexButton from '@/components/yandex-button.vue';
 
 const router = useRouter();
 const isLogin = ref(true);
@@ -159,6 +159,9 @@ function toggleForm() {
       <div ref="formContainer">
         <AuthForm :isLogin="isLogin" @toggle="toggleForm" />
         <!-- <YandexButton></YandexButton> -->
+        <!-- <teleport to="body">
+            <div id="yandex-auth-button-global"></div>
+        </teleport> -->
       </div>
     </div>
   </div>
