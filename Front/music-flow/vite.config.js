@@ -112,6 +112,7 @@ export default defineConfig({
         script-src 'self' 'unsafe-inline' 'unsafe-eval' https://yastatic.net https://mc.yandex.ru https://passport.yandex.ru;
         style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
         font-src 'self' https://fonts.gstatic.com https://yastatic.net;
+        media-src 'self' https://*.trycloudflare.com;
         img-src * data:;
         frame-src https://*.yandex.ru https://passport.yandex.ru;
         connect-src *;

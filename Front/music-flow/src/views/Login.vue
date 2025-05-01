@@ -94,7 +94,7 @@ onMounted(() => {
         
         // 2. Отправляем токен на сервер для валидации
         const response = await fetch(
-          `https://wind-trends-discovered-corrections.trycloudflare.com/check_token?token=${encodeURIComponent(token)}`, 
+          `https://hardly-jane-time-functions.trycloudflare.com/check_token?token=${encodeURIComponent(token)}`, 
           {
             method: 'GET',
             headers: {
