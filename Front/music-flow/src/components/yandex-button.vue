@@ -5,59 +5,29 @@ import { useRouter } from 'vue-router';
 const router = useRouter();
 const isLoading = ref(true);
 const error = ref(null);
+const isSdkLoaded = ref(false);
 
 onMounted(() => {
   initYandexAuth();
 });
 
 const initYandexAuth = () => {
+  // Проверяем, может SDK уже загружен
+  if (window.YaAuthSuggest) {
+    initYandexButton();
+    return;
+  }
+
   const script = document.createElement('script');
   script.src = 'https://yastatic.net/s3/passport-sdk/autofill/v1/sdk-suggest-with-polyfills-latest.js';
   script.async = true;
   
   script.onload = () => {
-    try {
-      if (!window.YaAuthSuggest) {
-        throw new Error('Yandex SDK не загрузился');
-      }
-
-      window.YaAuthSuggest.init(
-        {
-          client_id: import.meta.env.VITE_CLIENT_ID,
-          response_type: 'token',
-          redirect_uri: `${window.location.origin}/yandex-callback`,
-        },
-        `${window.location.origin}/yandex-callback`,
-        {
-          view: 'button', // Используем button вместо popup для прямой вставки
-          parentId: 'yandex-auth-button', // Должен совпадать с ID контейнера
-          buttonView: 'additional',
-          buttonTheme: 'dark',
-          buttonSize: 'm',
-          buttonBorderRadius: 22,
-        }
-      )
-      .then(({ handler }) => {
-        if (!handler) throw new Error('Обработчик не доступен');
-        return handler();
-      })
-      .then(data => {
-        console.log('Успешная авторизация:', data);
-        localStorage.setItem('yandex_token', data.access_token);
-        router.push('/');
-      })
-      .catch(err => {
-        error.value = `Ошибка авторизации: ${err.message}`;
-        console.error('Auth error:', err);
-      })
-      .finally(() => {
-        isLoading.value = false;
-      });
-    } catch (e) {
-      error.value = `Ошибка инициализации: ${e.message}`;
-      console.error('Init error:', e);
-      isLoading.value = false;
+    if (!window.YaAuthSuggest) {
+      error.value = 'Yandex SDK не загрузился';
+      return;
     }
+    initYandexButton();
   };
 
   script.onerror = () => {
@@ -67,12 +37,64 @@ const initYandexAuth = () => {
 
   document.head.appendChild(script);
 };
+
+const initYandexButton = () => {
+  try {
+    window.YaAuthSuggest.init(
+      {
+        client_id: import.meta.env.VITE_CLIENT_ID,
+        response_type: 'token',
+        redirect_uri: `${window.location.origin}/yandex-callback`,
+      },
+      `${window.location.origin}/yandex-callback`,
+      {
+        view: 'button',
+        parentId: 'yandex-auth-button',
+        buttonView: 'additional',
+        buttonTheme: 'dark',
+        buttonSize: 'm',
+        buttonBorderRadius: 22,
+      }
+    )
+    .then(({ handler }) => handler())
+    .then(data => {
+      console.log('Yandex auth success:', data);
+      window.postMessage({
+        type: 'yandex_auth_success',
+        token: data.access_token
+      }, window.location.origin);
+    })
+    .catch(err => {
+      error.value = `Ошибка авторизации: ${err.message}`;
+      console.error('Yandex auth error:', err);
+    })
+    .finally(() => {
+      isLoading.value = false;
+    });
+  } catch (e) {
+    error.value = `Ошибка инициализации: ${e.message}`;
+    console.error('Yandex init error:', e);
+    isLoading.value = false;
+  }
+};
 </script>
+
+<template>
+  <div class="yandex-auth-wrapper">
+    <div v-if="isLoading" class="loading-state">
+      Загрузка кнопки Yandex ID...
+    </div>
+    <div v-else-if="error" class="error-message">
+      {{ error }}
+    </div>
+    <div id="yandex-auth-button" class="yandex-button-container"></div>
+  </div>
+</template>
 
 <style scoped>
 .yandex-auth-wrapper {
   margin: 20px auto;
-  min-height: 42px; /* Минимальная высота для кнопки */
+  min-height: 42px;
   position: relative;
 }
 
@@ -81,9 +103,10 @@ const initYandexAuth = () => {
   justify-content: center;
 }
 
-/* .loading-spinner { */
-  /* Стили для лоадера */
-/* } */
+.loading-state {
+  text-align: center;
+  color: #999;
+}
 
 .error-message {
   color: #ff3333;
@@ -91,16 +114,3 @@ const initYandexAuth = () => {
   text-align: center;
 }
 </style>
-
-
-
-
-
-
-
-<template>
-  <div class="yandex-auth-wrapper">
-    <!-- Контейнер с фиксированным ID -->
-    <div id="yandex-auth-button" class="yandex-button-container"></div>
-  </div>
-</template>

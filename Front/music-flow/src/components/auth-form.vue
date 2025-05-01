@@ -61,6 +61,7 @@
 
     <!-- <transition name="fast-fade" mode="out-in"> -->
     <YandexButton v-show="isLogin" :key="'yandex-btn'" />
+     <!-- <YandexButton></YandexButton> -->
   <!-- </transition> -->
     
     <div class="login-bottom-text cursor-pointer" @click="$emit('toggle')">

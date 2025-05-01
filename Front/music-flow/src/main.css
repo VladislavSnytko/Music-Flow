@@ -172,9 +172,8 @@ body {
   @apply flex-1 flex items-center justify-center;
 }
 
-/* Если в logo-in-login.vue вы рендерите SVG с классом .logo-in-login: */
 .logo-in-login {
-  @apply w-96 h-auto; /* например w-96 = 24rem = 384px */
+  @apply w-96 h-auto; 
 }
 
 /* Сам блок формы (AuthCard) */
