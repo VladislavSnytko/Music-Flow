@@ -9,7 +9,7 @@ import YandexButton from '@/components/yandex-button.vue';
 const router = useRouter();
 const isLogin = ref(true);
 const formContainer = ref(null);
-const DOMAIN = 'bottle-deaths-guestbook-kernel.trycloudflare.com';
+const DOMAIN = 'pe-science-determining-hobby.trycloudflare.com';
 
 
 onMounted(() => {

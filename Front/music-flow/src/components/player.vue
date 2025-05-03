@@ -1,7 +1,7 @@
 <template>
   <div ref="playerElement">  <!-- Добавлено -->
     <div class="send-container">
-      <input type="text" id="track-url" placeholder="Вставьте ссылку на трек из Яндекс.Музыки" class="Send_link" v-model="trackUrl">
+      <input type="text" id="track-url" placeholder="Вставьте ссылку на трек из Яндекс.Музыки" class="Send_link">
         <send id="load-btn" class="Send" @click="playTrack"></send>
     </div>
   </div>
@@ -56,7 +56,7 @@ import TimeBar from '../components/time-bar.vue';
 import { gsap } from 'gsap';
 import { CustomEase } from 'gsap/CustomEase';
 gsap.registerPlugin(CustomEase);
-const DOMAIN = `bottle-deaths-guestbook-kernel.trycloudflare.com`;
+const DOMAIN = `pe-science-determining-hobby.trycloudflare.com`;
 
 
 

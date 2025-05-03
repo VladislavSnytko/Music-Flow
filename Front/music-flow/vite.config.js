@@ -145,8 +145,8 @@ export default defineConfig({
     // },
     port: 443,
     allowedHosts: [
-      'cradle-viewpicture-carl-lady.trycloudflare.com',
-       'https://bottle-deaths-guestbook-kernel.trycloudflare.com'// Разрешаем этот домен
+      'hh-statewide-calcium-surely.trycloudflare.com',
+       'https://pe-science-determining-hobby.trycloudflare.com'// Разрешаем этот домен
     ],
     https: true,
     // host: 'localhost',
