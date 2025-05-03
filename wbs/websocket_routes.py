@@ -39,6 +39,10 @@ class WebSocketRoutes:
 
         except WebSocketDisconnect:
             pass
+        except asyncio.CancelledError:
+            # Корректно обрабатываем отмену задачи
+            print('asyncio disconnect')
+            pass
         finally:
             await self.manager.disconnect(room_id, user_id)
             reader_task.cancel()
@@ -126,6 +130,7 @@ class WebSocketRoutes:
             return  # Игнорируем некорректные данные
 
         msg_type = data["type"]
+        print(msg_type)
 
         if msg_type == "current_time":
             if room_id not in self.time_responses:
@@ -165,6 +170,7 @@ class WebSocketRoutes:
         elif msg_type == "change_track":
             tracks = data.get("tracks", [])
             index = data.get("index", 0)
+            print(tracks)
             if tracks:
                 await self.manager.update_room_state(room_id, {
                     "list_track": tracks,

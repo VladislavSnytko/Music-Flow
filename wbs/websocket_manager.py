@@ -21,8 +21,10 @@ class ConnectionManager:
         if room_id in self.active_connections and user_id in self.active_connections[room_id]:
             del self.active_connections[room_id][user_id]
             if not self.active_connections[room_id]:
+                print(1, user_id)
                 del self.active_connections[room_id]
             else:
+                print(2, user_id)
                 await self.update_participants(room_id)
 
     async def broadcast(self, room_id: str, message: dict, exclude_user: str = None):

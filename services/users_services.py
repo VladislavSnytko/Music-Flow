@@ -65,7 +65,7 @@ class UserServices:
         session.add(new_user)
         await session.commit()
 
-        return {'Status': 'Successfully'}
+        return {'Status': 'Successfully', 'user_id': str(new_user.id)}
     
     async def logging(self, obj: dict):
         async with self.db.session_factory() as session:
@@ -94,6 +94,17 @@ class UserServices:
             token = result.scalar_one_or_none()
             # print(f'toks = {token}')
             return token.yandex_token
+        
+
+    async def check_yandex_token(self, yandex_token: str):
+        """Проверяет наличие Яндекс токена в БД"""
+        async with self.db.session_factory() as session:
+            print('222')
+            result = await session.execute(
+                select(Users).where(Users.yandex_token == yandex_token)
+            )
+            x = result.scalar_one_or_none()
+            return x
 
         
 if __name__ == '__main__':

@@ -190,7 +190,7 @@
                 <p id="artist">Исполнитель</p>
             </div>
         
-            <audio id="audio" preload="metadata"></audio>
+            <audio id="audio" preload="auto"></audio>
         
             <input type="range" id="progress" value="0" min="0" step="0.1">
             <div class="time-display">
@@ -226,6 +226,7 @@
         const currentAudio = document.getElementById('audio');
         let isSyncing = false;
         let currentTrack = null;
+        let hi="ff466fde-1661-477d-95b3-68b534257b0d";
         async function getCookie(name) {
                 let matches = await fetch(`/get_cookie`, {method:`GET`});
                 return await matches.json();
@@ -242,7 +243,8 @@
             }
             console.log(window.location.host);
             const wsProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
-            socket = new WebSocket(`${wsProtocol}${window.location.host}/room/${roomId}/ws`);
+            
+            socket = new WebSocket(`${wsProtocol}${window.location.host}/room/${roomId}/ws?user_id=${hi}`);
 
 
             socket.onopen = () => {
@@ -364,9 +366,9 @@
                 if (!trackUrl) return;
 
                 currentTrack = trackUrl;
-                currentAudio.src = `/stream?url=${encodeURIComponent(trackUrl)}`;
+                currentAudio.src = `/stream?url=${encodeURIComponent(trackUrl)}&user_id=${hi}`;
 
-                fetch(`/stream?url=${encodeURIComponent(trackUrl)}`)
+                fetch(`/stream?url=${encodeURIComponent(trackUrl)}&user_id=${hi}`)
                     .then(response => {
                         const trackInfo = JSON.parse(response.headers.get('Track-Info'));
                         console.log(trackInfo);
@@ -377,7 +379,9 @@
 
                         // Добавляем обработчик для определения когда трек готов к воспроизведению
                         currentAudio.oncanplay = () => {
-                            callback();
+                            if (typeof callback === 'function') {
+                                callback();
+                            }
                             currentAudio.oncanplay = null;
                         };
                     })
@@ -468,8 +472,8 @@
 
                 // Обновление UI плеера
                 function updatePlayerUI(isPlaying) {
-                    document.getElementById('play-btn').disabled = isPlaying;
-                    document.getElementById('pause-btn').disabled = !isPlaying;
+                    document.getElementById('play-btn').hidden = isPlaying;
+                    document.getElementById('pause-btn').hidden = !isPlaying;
                 }
 
                 // Отправка команд на сервер
