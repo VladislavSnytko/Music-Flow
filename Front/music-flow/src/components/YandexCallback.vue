@@ -19,10 +19,10 @@ const loadYandexSdk = () => {
 onMounted(async () => {
   console.log('YandexCallback mounted. Parsing token...');
 
-  const hash = window.location.hash.substring(1);
-  const params = new URLSearchParams(hash);
-  const token = params.get('access_token');
-  console.log('YandexCallback — token:', token);
+  const hash = window.location.hash.substring(2);
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get('code');
+  console.log('YandexCallback — token:', params);
 
   if (!token) {
     console.error('Токен не найден в URL');
@@ -37,7 +37,7 @@ onMounted(async () => {
     console.log('Yandex SDK загружен. Вызываем YaSendSuggestToken...');
 
     // Передаём токен родителю (origin должен быть точным)
-    window.YaSendSuggestToken('https://localhost', {
+    window.YaSendSuggestToken(window.location.origin, {
       token: token
     });
 

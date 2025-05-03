@@ -88,6 +88,45 @@
 
 
 
+// import { defineConfig } from 'vite';
+// import vue from '@vitejs/plugin-vue';
+// import path from 'path';
+// import mkcert from 'vite-plugin-mkcert';
+
+// export default defineConfig({
+//   plugins: [vue(), mkcert()],
+//   resolve: {
+//     alias: {
+//       '@': path.resolve(__dirname, './src'),
+//     },
+//   },
+//   server: {
+//     https: true,
+//     host: 'localhost',
+//     port: 443,
+//     strictPort: true,
+//     hmr: { protocol: 'wss' },
+//     headers: {
+//       'Content-Security-Policy': `
+//         default-src 'self' https://yastatic.net https://passport.yandex.ru;
+//         script-src 'self' 'unsafe-inline' 'unsafe-eval' https://yastatic.net https://mc.yandex.ru https://passport.yandex.ru;
+//         style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+//         font-src 'self' https://fonts.gstatic.com https://yastatic.net;
+//         media-src 'self' https://*.trycloudflare.com;
+//         img-src * data:;
+//         frame-src https://*.yandex.ru https://passport.yandex.ru;
+//         connect-src *;
+//       `.replace(/\s{2,}/g, ' ').trim()
+//     }
+    
+//   }
+// });
+
+
+
+
+
+
 import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import path from 'path';
@@ -101,9 +140,17 @@ export default defineConfig({
     },
   },
   server: {
-    https: true,
-    host: 'localhost',
+    // proxy: {
+    //   '/api': 'https://localhost:8000', // ваш бекенд
+    // },
     port: 443,
+    allowedHosts: [
+      'cradle-viewpicture-carl-lady.trycloudflare.com',
+       'https://bottle-deaths-guestbook-kernel.trycloudflare.com'// Разрешаем этот домен
+    ],
+    https: true,
+    // host: 'localhost',
+    // port: 443,
     strictPort: true,
     hmr: { protocol: 'wss' },
     headers: {
@@ -112,7 +159,7 @@ export default defineConfig({
         script-src 'self' 'unsafe-inline' 'unsafe-eval' https://yastatic.net https://mc.yandex.ru https://passport.yandex.ru;
         style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
         font-src 'self' https://fonts.gstatic.com https://yastatic.net;
-        media-src 'self' https://*.trycloudflare.com;
+        media-src 'self' https://*.trycloudflare.com https://bottle-deaths-guestbook-kernel.trycloudflare.com;
         img-src * data:;
         frame-src https://*.yandex.ru https://passport.yandex.ru;
         connect-src *;

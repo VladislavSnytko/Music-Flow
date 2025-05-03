@@ -54,7 +54,7 @@ const togglePlayPause = () => {
 
 /* Базовые стили кнопок */
 .play-btn-past, .play-btn-next {
-  @apply w-[40px] h-[40px] transition-all duration-300 ease-in-out;
+  @apply w-[40px] h-[40px] transition-all duration-500 ease-in-out;
   filter: drop-shadow(0px 4px 10.5px rgba(0, 0, 0, 0.5));
 }
 
@@ -86,7 +86,7 @@ const togglePlayPause = () => {
 
 /* Общие стили */
 .control-button {
-  @apply cursor-pointer transition-all duration-200 bg-transparent border-none p-0;
+  @apply cursor-pointer transition-all duration-300 bg-transparent border-none p-0;
 }
 
 .control-button:active {

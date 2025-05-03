@@ -65,7 +65,7 @@ const initYandexAuth = async () => {
     const result = await window.YaAuthSuggest.init(
       {
         client_id: import.meta.env.VITE_CLIENT_ID,
-        response_type: 'token',
+        response_type: 'code',
         redirect_uri: `${window.location.origin}/yandex-callback`,
       },
       window.location.origin,
@@ -87,9 +87,10 @@ const initYandexAuth = async () => {
     const data = await result.handler();
     
     console.log('[YandexAuth] Auth success:', data);
+    console.log(window.location.origin);
     window.postMessage({
       type: 'yandex_auth_success',
-      token: data.access_token
+      code: data.code
     }, window.location.origin);
     
   } catch (err) {
