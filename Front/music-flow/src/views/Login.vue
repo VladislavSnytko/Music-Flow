@@ -9,10 +9,12 @@ import YandexButton from '@/components/yandex-button.vue';
 const router = useRouter();
 const isLogin = ref(true);
 const formContainer = ref(null);
-const DOMAIN = 'pe-science-determining-hobby.trycloudflare.com';
+const DOMAIN = import.meta.env.VITE_DOMAIN;
 
 
 onMounted(() => {
+
+  
   window.addEventListener('message', async (event) => {
     // Проверяем origin сообщения для безопасности
     if (event.origin !== window.location.origin) return;
@@ -48,6 +50,7 @@ onMounted(() => {
         
         // 3. Проверяем ответ сервера и перенаправляем
         if (result.success) {
+          document.cookie = `user_id=${result.user_id}; path=/; SameSite=Lax`;
           router.push('/Main');
         } else {
           console.error('Сервер отклонил токен:', result.message);

@@ -56,7 +56,7 @@ import TimeBar from '../components/time-bar.vue';
 import { gsap } from 'gsap';
 import { CustomEase } from 'gsap/CustomEase';
 gsap.registerPlugin(CustomEase);
-const DOMAIN = `pe-science-determining-hobby.trycloudflare.com`;
+const DOMAIN = import.meta.env.VITE_DOMAIN;
 
 
 
@@ -241,18 +241,35 @@ loadContent() {
   });
 },
 methods: {
-    async initWebSocket() {
-      this.userId = "9d9f17c3-ad1e-441f-9955-0590286bc61c"; // Замените на реальный ID
-      this.currentAudio = document.getElementById('audio');
-      console.log(this.currentAudio)
-      if (!this.userId) {
-        alert('Требуется авторизация');
-        return;
-      }
+
+
+  async getCookie(name) {
+      const value = `; ${document.cookie}`;
+      const parts = value.split(`; ${name}=`);
+      if (parts.length === 2) return parts.pop().split(';').shift();
+      return null;
+  },
+
+
+
+  async initWebSocket() {
+  // Получаем user_id из куки
+  const userIdFromCookie = await this.getCookie('user_id');
+  console.log(this.userIdFromCookie);
+  
+  // Проверяем, есть ли user_id в куках
+  if (!userIdFromCookie) {
+    alert('Требуется авторизация');
+    return;
+  }
+
+  this.userId = userIdFromCookie;
+  this.currentAudio = document.getElementById('audio');
+  console.log(this.currentAudio);
 
       const wsProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
       this.socket = new WebSocket(
-        `wss://${DOMAIN}/room/faf1c5d6-da2f-4fb5-88a6-7023d40d62ff/ws?user_id=9d9f17c3-ad1e-441f-9955-0590286bc61c`
+        `wss://${DOMAIN}/room/faf1c5d6-da2f-4fb5-88a6-7023d40d62ff/ws?user_id=${this.userId}`
       );
 
       this.socket.onopen = () => {

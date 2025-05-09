@@ -1,32 +1,37 @@
 <template>
-  <div>
+  <div :class="['player-wrapper', { visible: isPlayerVisible }]">
     <AudioPlayer :song="currentSong" />
-    
-    <!-- <div class="parent">
-    <timeBar class="temp" :currentTime="10" :duration="25"></timeBar> </div> -->
   </div>
 </template>
 
+
+
+
+
+
+
+
 <script>
 import AudioPlayer from '@/components/player.vue';
-// import timeBar from '@/components/time-bar.vue';
-
 
 export default {
-  components: {
-    AudioPlayer,
-    // timeBar
-  },
+  components: { AudioPlayer },
   data() {
     return {
       currentSong: {
         name: 'Name of song',
         artist: 'Songer',
         src: 'path/to/your/audio/file.mp3'
-      }
-    }
+      },
+      isPlayerVisible: false
+    };
+  },
+  mounted() {
+    setTimeout(() => {
+      this.isPlayerVisible = true;
+    }, 100); // Небольшая задержка для срабатывания анимации
   }
-}
+};
 </script>
 
 
@@ -43,4 +48,12 @@ export default {
   max-width: 700px;
 }
 
+.player-wrapper {
+  opacity: 0;
+  transition: opacity 1s ease;
+}
+
+.player-wrapper.visible {
+  opacity: 1;
+}
 </style>

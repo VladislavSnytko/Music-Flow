@@ -127,44 +127,93 @@
 
 
 
-import { defineConfig } from 'vite';
+// import { defineConfig } from 'vite';
+// import vue from '@vitejs/plugin-vue';
+// import path from 'path';
+// import mkcert from 'vite-plugin-mkcert';
+
+
+
+// export default defineConfig({
+
+//   plugins: [vue(), mkcert()],
+//   resolve: {
+//     alias: {
+//       '@': path.resolve(__dirname, './src'),
+//     },
+//   },
+//   server: {
+//     // proxy: {
+//     //   '/api': 'https://localhost:8000', // ваш бекенд
+//     // },
+//     port: 443,
+//     allowedHosts: [
+//       // 'hh-statewide-calcium-surely.trycloudflare.com',
+//       //  'https://pe-science-determining-hobby.trycloudflare.com'// Разрешаем этот домен (бек)
+//       'fs-ag-cage-hold.trycloudflare.com',
+//       DOMAIN,
+//     ],
+//     https: true,
+//     // host: 'localhost',
+//     // port: 443,
+//     strictPort: true,
+//     hmr: { protocol: 'wss' },
+    // headers: {
+    //   'Content-Security-Policy': `
+    //     default-src 'self' https://yastatic.net https://passport.yandex.ru;
+    //     script-src 'self' 'unsafe-inline' 'unsafe-eval' https://yastatic.net https://mc.yandex.ru https://passport.yandex.ru;
+    //     style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+    //     font-src 'self' https://fonts.gstatic.com https://yastatic.net;
+    //     media-src 'self' https://*.trycloudflare.com https://bottle-deaths-guestbook-kernel.trycloudflare.com;
+    //     img-src * data:;
+    //     frame-src https://*.yandex.ru https://passport.yandex.ru;
+    //     connect-src *;
+    //   `.replace(/\s{2,}/g, ' ').trim()
+    // }
+    
+//   }
+// });
+
+
+import { defineConfig, loadEnv } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import path from 'path';
 import mkcert from 'vite-plugin-mkcert';
 
-export default defineConfig({
-  plugins: [vue(), mkcert()],
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src'),
+export default defineConfig(({ mode }) => {
+  // Загружаем переменные окружения с учётом текущего режима (например, 'development')
+  const env = loadEnv(mode, process.cwd());
+
+  const DOMAIN = env.VITE_DOMAIN;
+
+  return {
+    plugins: [vue(), mkcert()],
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, './src'),
+      },
     },
-  },
-  server: {
-    // proxy: {
-    //   '/api': 'https://localhost:8000', // ваш бекенд
-    // },
-    port: 443,
-    allowedHosts: [
-      'hh-statewide-calcium-surely.trycloudflare.com',
-       'https://pe-science-determining-hobby.trycloudflare.com'// Разрешаем этот домен
-    ],
-    https: true,
-    // host: 'localhost',
-    // port: 443,
-    strictPort: true,
-    hmr: { protocol: 'wss' },
-    headers: {
-      'Content-Security-Policy': `
-        default-src 'self' https://yastatic.net https://passport.yandex.ru;
-        script-src 'self' 'unsafe-inline' 'unsafe-eval' https://yastatic.net https://mc.yandex.ru https://passport.yandex.ru;
-        style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-        font-src 'self' https://fonts.gstatic.com https://yastatic.net;
-        media-src 'self' https://*.trycloudflare.com https://bottle-deaths-guestbook-kernel.trycloudflare.com;
-        img-src * data:;
-        frame-src https://*.yandex.ru https://passport.yandex.ru;
-        connect-src *;
-      `.replace(/\s{2,}/g, ' ').trim()
+    server: {
+      port: 443,
+      allowedHosts: [
+        'fs-ag-cage-hold.trycloudflare.com',
+        DOMAIN,
+      ],
+      https: true,
+      strictPort: true,
+      hmr: { protocol: 'wss' },
+      headers: {
+        'Content-Security-Policy': `
+          default-src 'self' https://yastatic.net https://passport.yandex.ru;
+          script-src 'self' 'unsafe-inline' 'unsafe-eval' https://yastatic.net https://mc.yandex.ru https://passport.yandex.ru;
+          style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+          font-src 'self' https://fonts.gstatic.com https://yastatic.net;
+          media-src 'self' https://*.trycloudflare.com https://bottle-deaths-guestbook-kernel.trycloudflare.com;
+          img-src * data:;
+          frame-src https://*.yandex.ru https://passport.yandex.ru;
+          connect-src *;
+        `.replace(/\s{2,}/g, ' ').trim()
+      }
     }
-    
-  }
+  };
 });
