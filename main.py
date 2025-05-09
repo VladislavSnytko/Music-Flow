@@ -28,9 +28,10 @@ from wbs.websocket_routes import WebSocketRoutes
 
 load_dotenv()
 app = FastAPI()
+DOMAIN = os.getenv("DOMAIN")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://cradle-viewpicture-carl-lady.trycloudflare.com"],  # Или конкретный домен, например ["http://localhost:5173"]
+    allow_origins=[DOMAIN],  # Или конкретный домен, например ["http://localhost:5173"]
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -45,7 +46,7 @@ CLIENT_SECRET = os.getenv("YANDEX_CLIENT_SECRET")
 REDIRECT_URI = "https://fjxp38df-8000.euw.devtunnels.ms/callback"
 # DOMAIN = "developmental-educators-allergy-civilization.trycloudflare.com"
 # client = Client(OAUTH_TOKEN).init()
-DOMAIN = "localhost"
+
 YANDEX_API = "https://api.music.yandex.net"
 # Инициализация клиента Яндекс.Музыки
 # client = Client(OAUTH_TOKEN).init()
@@ -63,7 +64,7 @@ async def add_csp_header(request: Request, call_next):
     response = await call_next(request)
     response.headers["Content-Security-Policy"] = (
         "media-src 'self' https://*.trycloudflare.com http://localhost:8000 "
-        "https://bottle-deaths-guestbook-kernel.trycloudflare.com; "
+        "https://fs-ag-cage-hold.trycloudflare.com; "
         "default-src 'self'; "
         "script-src 'self' 'unsafe-inline'; "
         "connect-src 'self' ws://* wss://*"
@@ -155,7 +156,7 @@ async def check_token(code: str, db: Database = Depends(Database)):
             return JSONResponse(
                 content=response_data,
                 headers={
-                    "Access-Control-Allow-Origin": "https://cradle-viewpicture-carl-lady.trycloudflare.com",  # или "*" (но не с credentials)
+                    "Access-Control-Allow-Origin": DOMAIN,  # или "*" (но не с credentials)
                 }
             )
 
@@ -304,15 +305,15 @@ async def auth_login(request: Request, response: Response, nickname: str, hashed
                 content=json.dumps({'status': 'Successfully hui', 'user_id': str(usr_id)}),
                 status_code=200
             )
-            response.set_cookie(
-                key="user_id",
-                value=str(usr_id),
-                httponly=True,
-                secure=False,
-                samesite="lax",
-                domain=DOMAIN,  # Явное указание домена
-                path="/"
-            )
+            # response.set_cookie(
+            #     key="user_id",
+            #     value=str(usr_id),
+            #     httponly=True,
+            #     secure=False,
+            #     samesite="lax",
+            #     domain=DOMAIN,  # Явное указание домена
+            #     path="/"
+            # )
             return response
         return {'status': 'error', 'message': 'Неправильный логин или пароль'}
     except Exception as e:
@@ -368,6 +369,7 @@ async def get_cached_track_info(track_id: str, user_id: str):
 async def track_and_stream(url: str, user_id: str):
     try:
         clean_url = url.split('?')[0]
+        print(f'{url} - {user_id}')
         track_id = clean_url.split('track/')[1].split('/')[0]
         
         track = await get_cached_track_info(track_id, user_id)
