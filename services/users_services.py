@@ -13,8 +13,10 @@ from pydantic import EmailStr
 
 import jwt
 import secrets
+import httpx
 
 from hashlib import sha256
+from fastapi import HTTPException
 
 
 class UserServices:
@@ -105,6 +107,16 @@ class UserServices:
             )
             x = result.scalar_one_or_none()
             return x
+        
+    async def get_yandex_profile(self, token: str) -> dict:
+        async with httpx.AsyncClient() as client:
+            headers = {"Authorization": f"OAuth {token}"}
+            response = await client.get("https://login.yandex.ru/info", headers=headers)
+            if response.status_code != 200:
+                raise HTTPException(
+                    status_code=401, detail="Не удалось получить данные профиля Яндекса"
+                )
+            return response.json()
 
         
 if __name__ == '__main__':

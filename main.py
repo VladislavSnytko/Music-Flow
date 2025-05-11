@@ -28,7 +28,7 @@ from wbs.websocket_routes import WebSocketRoutes
 
 load_dotenv()
 app = FastAPI()
-DOMAIN = os.getenv("DOMAIN")
+DOMAIN = os.getenv("DOMAIN") # Домен фронта
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[DOMAIN],  # Или конкретный домен, например ["http://localhost:5173"]
@@ -168,7 +168,7 @@ async def check_token(code: str, db: Database = Depends(Database)):
             # Проверки на пустые поля
             email = email if email else None
             login = login if login else None
-            birthday = birthday if birthday else None
+            birthday = birthday if birthday else 'hui'
             if not login:
                 raise HTTPException(
                     status_code=400, detail="Не удалось получить логин Яндекса"
@@ -177,7 +177,7 @@ async def check_token(code: str, db: Database = Depends(Database)):
             
             new_user = await user_services.create_new_user(
                 email=email,
-                hashed_password='12345',
+                password='12345',
                 username=login,
                 birthday=birthday,
                 yandex_token=token,
