@@ -15,7 +15,7 @@
 import AudioPlayer from '@/components/player.vue';
 
 export default {
-  components: { AudioPlayer },
+  components: {AudioPlayer},
   data() {
     return {
       currentSong: {

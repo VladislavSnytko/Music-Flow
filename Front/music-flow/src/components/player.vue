@@ -40,6 +40,12 @@
             @prev="prevTrack" @next="nextTrack" ref="playControl" />
         </div>
       </div>
+      <volume 
+            v-if="!isLoading"
+            :volume="currentVolume"
+            @update:volume="handleVolumeUpdate"
+            ref="volumeControl"
+      ></volume>
     </div>
   </div>
 </template>
@@ -50,6 +56,7 @@ import play_button_active from '@/assets/play_button_active.vue';
 import play_past_button from '@/assets/play_past_button.vue';
 import play_next_button from '@/assets/play_next_button.vue';
 import playControlBlock from '@/components/play-control-block.vue';
+import volume from '@/components/volume.vue';
 import Send from '@/assets/Send.vue';
 import Logo from '@/assets/Logo-for-player.vue';
 import TimeBar from '../components/time-bar.vue';
@@ -63,6 +70,7 @@ const DOMAIN = import.meta.env.VITE_DOMAIN;
 
 export default {
   components: { play_button_pause,
+    volume,
     Send,
     Logo, 
     play_button_active, 
@@ -76,6 +84,12 @@ export default {
         default: () => ({ name: '', artist: '', src: '' })
       }
     },
+    
+    audioRef: {
+      type: Object,
+      required: true
+    },
+
     data() {
     return {
       isLoading: true,
@@ -83,6 +97,7 @@ export default {
       currentArtist: 'Исполнитель',
       isPlaying: false,
       currentTime: 0,
+      currentVolume: 1,
       duration: 0,
       // volume: 1,
       interval: null,
@@ -126,6 +141,9 @@ export default {
           position: 'absolute'
             }
     },
+      audioElement() {
+        return this.$refs.audioElement;
+    }
   },
 
   playEntranceAnimation() {
@@ -250,6 +268,14 @@ methods: {
       return null;
   },
 
+
+
+    handleVolumeUpdate(volume) {
+    this.currentVolume = volume;
+    if (this.currentAudio) {
+      this.currentAudio.volume = volume;
+    }
+  },
 
 
   async initWebSocket() {
@@ -555,8 +581,17 @@ methods: {
         opacity: 0,
         duration: 0.8,
         ease: "elastic.out(1, 0.5)"
-      }, "<+0.5"); // "<" означает "запустить в тот же момент времени, что и предыдущая анимация"
-    
+      }, "<+0.5") // "<" означает "запустить в тот же момент времени, что и предыдущая анимация"
+
+      if (this.$refs.volumeControl?.$el) {
+        tl.from(this.$refs.volumeControl.$el, {
+          y: 30,
+          opacity: 0,
+          duration: 0.8,
+          ease: "elastic.out(1, 0.5)"
+        }, "-=0.3");
+      }
+
       return tl;
     },
     
