@@ -196,7 +196,7 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 443,
       allowedHosts: [
-        'intervention-garbage-condition-babe.trycloudflare.com',
+        'besides-instrument-feeling-conf.trycloudflare.com',
         DOMAIN,
       ],
       https: true,

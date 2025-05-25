@@ -172,8 +172,12 @@ body {
   @apply flex-1 flex items-center justify-center;
 }
 
-.logo-in-login {
+/* .logo-in-login {
   @apply w-96 h-auto; 
+} */
+.logo-in-login {
+  width: clamp(300px, 60vw, 600px);
+  padding: clamp(0.5rem, 2vw, 1.5rem);
 }
 
 /* Сам блок формы (AuthCard) */

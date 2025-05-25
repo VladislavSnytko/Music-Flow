@@ -426,9 +426,14 @@ methods: {
         case 'pause':
           await this.handlePauseMessage(data);
           break;
+        // case 'change_track':
+        //   await this.handleChangeTrackMessage(data);
+        //   break;
         case 'change_track':
-          await this.handleChangeTrackMessage(data);
-          break;
+        if (data.tracks && data.tracks.length > 0 && !this.isSyncing) {
+          await this.loadTrack(data.tracks[data.index]);
+        }
+        break;
         case 'seek':
           console.log(data)
           await this.handleSeekMessage(data);
