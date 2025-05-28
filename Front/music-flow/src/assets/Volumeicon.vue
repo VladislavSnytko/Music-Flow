@@ -3,9 +3,9 @@
     <!-- Иконка "звук выключен" -->
     <svg
       v-if="volume === 0"
-      width="55"
-      height="55"
-      viewBox="0 0 55 55"
+      width="30"
+      height="30"
+      viewBox="0 0 30 30"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       
@@ -23,9 +23,9 @@
     <!-- Иконка "звук включен" -->
     <svg
       v-else
-      width="55"
-      height="55"
-      viewBox="0 0 55 55"
+      width="30"
+      height="30"
+      viewBox="0 0 30 30"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
     >
@@ -79,8 +79,8 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 55px;  /* Фиксируем по большей SVG */
-  height: 55px;
+  width: 30px;  /* Фиксируем по большей SVG */
+  height: 30px;
 }
 
 svg {

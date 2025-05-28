@@ -257,7 +257,15 @@ loadContent() {
       await this.updateTimeDisplay();
     }
   });
+  this.handleVolumeUpdate(0);
 },
+beforeUnmount() {
+    if (this.socket) {
+      this.socket.close(1000, "Page closed");  // 1000 = нормальное закрытие
+      this.socket = null;
+    }
+    clearInterval(this.interval);
+  },
 methods: {
 
 
@@ -270,7 +278,7 @@ methods: {
 
 
 
-    handleVolumeUpdate(volume) {
+  handleVolumeUpdate(volume) {
     this.currentVolume = volume;
     if (this.currentAudio) {
       this.currentAudio.volume = volume;
@@ -293,7 +301,7 @@ methods: {
   this.currentAudio = document.getElementById('audio');
   console.log(this.currentAudio);
 
-      const wsProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+      // const wsProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
       this.socket = new WebSocket(
         `wss://${DOMAIN}/room/faf1c5d6-da2f-4fb5-88a6-7023d40d62ff/ws?user_id=${this.userId}`
       );
@@ -439,6 +447,7 @@ methods: {
           await this.handleSeekMessage(data);
           break;
         case 'participants_update':
+          console.log(`participants:`, data.participants);
           // updateParticipantsList(data.participants);
           break;
         case 'load_track':
@@ -516,27 +525,58 @@ methods: {
 
     const url = document.getElementById('track-url').value.trim();
     console.log(url);
-    if (!url.includes('music.yandex.ru')) {
+    if (!url.includes('music.yandex.')) {
       alert('Пожалуйста, введите ссылку Яндекс.Музыки');
       return;
     }
 
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
       console.log(`socket open`);
-      this.sendTrackChange(url);
-    } else {
-      await this.loadTrack(url);
-    }
+      this.sendAddTrack(url);
+    } 
+    // else {
+    //   await this.loadTrack(url);
+    // }
   },
   async sendTrackChange(trackUrl) {
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
       console.log(3);
       await this.socket.send(JSON.stringify({
-        type: 'change_track',
+        type: 'previous_track',
         tracks: [trackUrl],
         index: 0
       }));
     }
+  },
+  async sendAddTrack(trackUrl) {
+    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+
+      await this.socket.send(JSON.stringify({
+        type: 'add_track',
+        tracks: [trackUrl]
+      }));
+    }
+  },
+  async sendNextTrack() {
+    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+
+      this.sendPauseCommand();
+      await this.socket.send(JSON.stringify({
+        type: 'next_track'
+      }));
+    }
+  },
+  async sendPrevTrack() {
+    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+      if (this.currentAudio.currentTime > 5){
+        this.onSeek(0);
+      }
+      else {
+        this.sendPauseCommand();
+        await this.socket.send(JSON.stringify({
+          type: 'previous_track'
+        }));
+      }}
   },
     async hideLoader() {
       // Анимация исчезновения прелоадера
@@ -624,6 +664,7 @@ methods: {
             resolve();
           };
           this.currentAudio.load();
+          
         });
         
         // Запускаем анимацию завершения загрузки
@@ -700,10 +741,12 @@ methods: {
       this.isPlaying = !this.isPlaying;
     },
     prevTrack() {
-      this.$emit('prev');
+      // this.$emit('prev');
+      this.sendPrevTrack();
     },
     nextTrack() {
-      this.$emit('next');
+      // this.$emit('next');
+      this.sendNextTrack();
     },
     updateProgress(e) {
       if (!this.isDragging){
@@ -921,6 +964,7 @@ handleDrag(e) {
   display: flex;
   flex-direction: column;
   padding: 0 15px;
+  user-select: none;
 }
 
 .player-content { 

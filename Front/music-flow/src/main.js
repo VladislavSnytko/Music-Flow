@@ -8,6 +8,10 @@ import { Flip } from "gsap/dist/Flip";
 
 gsap.registerPlugin(Flip);
 
+
+
+
+
 const app = createApp(App);
 app.use(router);
 app.mount('#app');
