@@ -77,5 +77,6 @@ class RoomsServices:
 if __name__ == '__main__':
     d = Database()
     b = RoomsServices(d)
-    asyncio.run(b.create_database())
+    # asyncio.run(b.create_database())
+    asyncio.run(b.get_all())
     # b.create_database()

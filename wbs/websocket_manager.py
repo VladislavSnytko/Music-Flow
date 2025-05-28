@@ -18,6 +18,7 @@ class ConnectionManager:
         await self.update_participants(room_id)
 
     async def disconnect(self, room_id: str, user_id: str):
+        print(3, room_id, user_id)
         if room_id in self.active_connections and user_id in self.active_connections[room_id]:
             del self.active_connections[room_id][user_id]
             if not self.active_connections[room_id]:
@@ -65,8 +66,15 @@ class ConnectionManager:
             room = await session.get(Rooms, uuid.UUID(room_id))
             if not room:
                 raise ValueError(f"Room {room_id} not found in DB")  # <-- Явная ошибка!
+            
 
             for key, value in update_data.items():
+                if 'new_track' == key:
+                    if value[0] not in room.list_track:
+                        value = room.list_track + value
+                        key = 'list_track'
+                    else:
+                        continue
                 setattr(room, key, value)
 
             await session.commit()

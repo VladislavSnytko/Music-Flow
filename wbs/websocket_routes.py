@@ -38,14 +38,14 @@ class WebSocketRoutes:
                 await self._handle_message(data, websocket, room_id, user_id)
 
         except WebSocketDisconnect:
-            pass
+            print(f"WebSocket disconnected for user {user_id}")
         except asyncio.CancelledError:
             # Корректно обрабатываем отмену задачи
             print('asyncio disconnect')
             pass
         finally:
-            await self.manager.disconnect(room_id, user_id)
             reader_task.cancel()
+            await self.manager.disconnect(room_id, user_id)
             self.message_queues.pop(websocket, None)
 
     async def _message_reader(self, websocket: WebSocket, queue: asyncio.Queue):
@@ -181,6 +181,54 @@ class WebSocketRoutes:
                 await self.manager.broadcast(room_id, {
                     "type": "load_track",
                     "url": tracks[index]
+                })
+        elif msg_type == "add_track":
+            tracks = data.get("tracks", [])
+            index = data.get("index", 0)
+            print(tracks)
+            if tracks:
+                await self.manager.update_room_state(room_id, {
+                    "new_track": tracks
+                })
+                room_state = await self.manager.get_room_state(room_id)
+                if len(room_state['list_track']) == 1:
+                    await self.manager.broadcast(room_id, {
+                    "type": "load_track",
+                    "url": room_state['list_track'][0]
+                })
+        elif msg_type == "next_track":
+            room_state = await self.manager.get_room_state(room_id)
+            new_index = (room_state['index_track'] + 1) % len(room_state['list_track'])
+            await self.manager.update_room_state(room_id, {
+                    "index_track": new_index,
+                    "time_moment": 0,
+                    "status_track": False,
+                })
+            await self.manager.broadcast(room_id, {
+                    "type": "load_track",
+                    "url": room_state['list_track'][new_index]
+                })
+        elif msg_type == "previous_track":
+            room_state = await self.manager.get_room_state(room_id)
+            # if room_state['time_moment'] > 5:
+            #     await self.manager.update_room_state(room_id, {
+            #             "time_moment": 0
+            #         })
+            #     await self.manager.broadcast(room_id, {
+            #         "type": "seek",
+            #         "position": 0
+            #     }, exclude_user=user_id)
+            # else:
+            new_index = room_state['index_track'] - 1
+            new_index = new_index if new_index >= 0 else len(room_state['list_track']) - 1
+            await self.manager.update_room_state(room_id, {
+                    "index_track": new_index,
+                    "time_moment": 0,
+                    "status_track": False,
+                })
+            await self.manager.broadcast(room_id, {
+                    "type": "load_track",
+                    "url": room_state['list_track'][new_index]
                 })
 
         elif msg_type == "get_participants":
