@@ -201,6 +201,14 @@ loadContent() {
     
     
     this.currentAudio = this.$refs.audioElement; // Инициализируем currentAudio из ref
+
+        this.currentAudio.addEventListener('ended', async () => {
+      console.log('Трек завершился, плавно переключаем на следующий');
+      await this.sendNextTrack();
+    });
+
+
+
     await this.initWebSocket();
     
     // Проверяем, что все refs существуют

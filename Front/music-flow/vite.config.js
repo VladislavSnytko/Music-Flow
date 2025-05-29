@@ -196,7 +196,7 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 443,
       allowedHosts: [
-        'symptoms-economic-results-essentials.trycloudflare.com',
+        'talent-starts-shake-andale.trycloudflare.com',
         DOMAIN,
       ],
       https: true,
