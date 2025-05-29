@@ -196,7 +196,7 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 443,
       allowedHosts: [
-        'talent-starts-shake-andale.trycloudflare.com',
+        'threaded-literature-iraq-paths.trycloudflare.com',
         DOMAIN,
       ],
       https: true,
