@@ -89,28 +89,26 @@ export default {
       type: Object,
       required: true
     },
-
     data() {
-    return {
-      isLoading: true,
-      currentTrackTitle: 'Название трека',
-      currentArtist: 'Исполнитель',
-      isPlaying: false,
-      currentTime: 0,
-      currentVolume: 1,
-      duration: 0,
-      // volume: 1,
-      interval: null,
-      isDragging: false,
-      socket: null,  // Добавляем socket в data
-      userId: null,
-      currentAudio: null,
-      isSyncing: false,
-      currentTrack: null,
-      isPlaying: false,
-      progress: null
-    }
-  },
+      return {
+        isLoading: true,
+        isInitialLoad: true, // <--- добавлено
+        currentTrackTitle: 'Название трека',
+        currentArtist: 'Исполнитель',
+        isPlaying: false,
+        currentTime: 0,
+        currentVolume: 1,
+        duration: 0,
+        interval: null,
+        isDragging: false,
+        socket: null,
+        userId: null,
+        currentAudio: null,
+        isSyncing: false,
+        currentTrack: null,
+        progress: null
+      };
+    },
   computed: {
     // formattedCurrentTime() {
     //   return this.formatTime(this.currentTime);
@@ -201,6 +199,14 @@ loadContent() {
     
     
     this.currentAudio = this.$refs.audioElement; // Инициализируем currentAudio из ref
+
+        this.currentAudio.addEventListener('ended', async () => {
+      console.log('Трек завершился, плавно переключаем на следующий');
+      await this.sendNextTrack();
+    });
+
+
+
     await this.initWebSocket();
     
     // Проверяем, что все refs существуют
@@ -641,70 +647,63 @@ methods: {
     },
     
     async loadTrack(trackUrl) {
-      try {
-        this.isLoading = true;
-        await this.showLoadingState();
-        
-        const response = await fetch(`https://${DOMAIN}/track_and_stream?url=${encodeURIComponent(trackUrl)}&user_id=${this.userId}`);
-        const data = await response.json();
-        
-        // Обновляем данные
-        this.currentTrackTitle = data.title;
-        this.currentArtist = data.artist;
-        this.$refs.coverImage.src = data.cover;
-        
-        // Устанавливаем источник аудио
-        this.currentAudio.src = `https://${DOMAIN}${data.stream_url}`;
-        
-        // Ждем загрузки аудио
-        await new Promise((resolve) => {
-          this.currentAudio.oncanplay = () => {
-            this.hideLoader();
-            this.currentAudio.oncanplay = null;
-            resolve();
-          };
-          this.currentAudio.load();
-          
-        });
-        
-        // Запускаем анимацию завершения загрузки
-        
-        
-      } catch (error) {
-        console.error('Ошибка загрузки трека:', error);
-        await this.showErrorState();
-        throw error;
-      }
-    },
-    
-    async showLoadingState() {
-      // Можно добавить специальную анимацию для состояния загрузки
-      await gsap.to([this.$refs.coverImage, this.$refs.songInfo], {
-        opacity: 0.8,
-        duration: 0.3,
-        ease: "power1.out"
-      });
-    },
-    
-    async showErrorState() {
-      // Анимация для состояния ошибки
-      const tl = gsap.timeline();
-      
-      tl.to(".preloader", {
-        backgroundColor: "rgba(80, 18, 34, 0.8)",
-        duration: 0.5
-      })
-      .to(".loading-text", {
-        text: "Ошибка загрузки",
-        duration: 0.3
-      })
-      .to(".wave", {
-        backgroundColor: "#ff4d4d",
-        duration: 0.3
-      });
-      
-      return tl;
-    },
+        try {
+          if (this.isInitialLoad) {
+            this.isLoading = true;
+            this.isInitialLoad = false;
+          } else {
+            // Анимация скрытия старого контента
+            await gsap.to([this.$refs.coverImage, this.$refs.songInfo], {
+              opacity: 0,
+              y: 20,
+              duration: 0.4,
+              ease: "power2.in"
+            });
+          }
+
+          const response = await fetch(`https://${DOMAIN}/track_and_stream?url=${encodeURIComponent(trackUrl)}&user_id=${this.userId}`);
+          const data = await response.json();
+
+          // Обновляем данные
+          this.currentTrackTitle = data.title;
+          this.currentArtist = data.artist;
+          this.$refs.coverImage.src = data.cover;
+
+          this.currentAudio.src = `https://${DOMAIN}${data.stream_url}`;
+
+          await new Promise((resolve) => {
+            this.currentAudio.oncanplay = () => {
+              if (this.isLoading) {
+                this.hideLoader(); // Только при первом заходе
+              }
+              this.currentAudio.oncanplay = null;
+              resolve();
+            };
+            this.currentAudio.load();
+          });
+
+          await this.$nextTick();
+
+          // Анимация появления нового контента
+          await gsap.fromTo(
+            [this.$refs.coverImage, this.$refs.songInfo],
+            { opacity: 0, y: -20 },
+            {
+              opacity: 0.8,
+              y: 0,
+              duration: 0.6,
+              ease: "power2.out",
+              stagger: 0.1
+            }
+          );
+
+        } catch (error) {
+          console.error('Ошибка загрузки трека:', error);
+          await this.showErrorState();
+          throw error;
+        }
+      },
+
     async updatePlayerUI(isPlaying) {
       // document.getElementById('play-btn').hidden = !isPlaying;
       // document.getElementById('pause-btn').hidden = isPlaying;
@@ -943,6 +942,7 @@ handleDrag(e) {
   position: relative;
   width: 400px;
   height: 400px;
+  opacity: 0.8;
   margin: 0 auto;
   background: rgba(18, 11, 33, 0.75);
   border-radius: 30px;

@@ -51,7 +51,7 @@ export default {
   },
   data() {
     return {
-      previousVolume: this.volume > 0 ? this.volume : 0.5,
+      previousVolume: this.volume > 0 ? this.volume : 1,
     };
   },
   watch: {
