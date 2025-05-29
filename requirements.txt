@@ -1,3 +1,4 @@
+aiocache==0.12.3
 aiofiles==24.1.0
 aiohappyeyeballs==2.6.1
 aiohttp==3.11.14
@@ -14,7 +15,9 @@ cryptography==44.0.2
 fastapi==0.115.12
 frozenlist==1.5.0
 greenlet==3.1.1
-h11==0.14.0
+h11==0.16.0
+httpcore==1.0.9
+httpx==0.28.1
 idna==3.10
 Jinja2==3.1.6
 MarkupSafe==3.0.2
