@@ -1,24 +1,49 @@
 <template>
-  <div :class="['player-wrapper', { visible: isPlayerVisible }]">
-    <AudioPlayer :song="currentSong" />
+  <div class="main-container">
+    <!-- Левый блок: Список участников -->
+    <ParticipantsList
+      :participants="participants"
+      :userId="userId"
+    />
+    
+    <!-- Центральный блок: Очередь треков и поле ввода -->
+    <div class="center-section">
+      <div class="Trackqueue">
+        <TrackQueue 
+        :tracks="tracks" 
+        :currentTrackIndex="currentTrackIndex"
+      />
+      </div>
+      <div class="SendBlock">
+        <SendTrack @send="handleSendTrack"/>
+      </div>
+      <!-- <SendTrack class="SendBlock" @send="handleSendTrack"/> -->
+      
+    </div>
+
+    <!-- Правый блок: Плеер -->
+    <AudioPlayer
+      ref="audioPlayer"
+      :song="currentSong"
+      @participants-update="updateParticipantsList"
+      @update-tracks="updateTracksList"
+    />
   </div>
-
 </template>
-
-
-
-
-
-
-
 
 <script>
 import AudioPlayer from '@/components/player.vue';
 import ParticipantsList from '@/components/Participants-list.vue';
+import TrackQueue from '@/components/Track_queue.vue';
+import SendTrack from '@/components/Send-search_Track.vue';
 
 export default {
-  components: {AudioPlayer},
-  ParticipantsList,
+  components: {
+    AudioPlayer,
+    ParticipantsList,
+    TrackQueue,
+    SendTrack
+  },
   data() {
     return {
       currentSong: {
@@ -26,206 +51,93 @@ export default {
         artist: 'Songer',
         src: 'path/to/your/audio/file.mp3'
       },
-      isPlayerVisible: false
+      tracks: [],
+      currentTrackIndex: 0,
+      isPlayerVisible: false,
+      participants: [],
+      userId: this.getCookie('user_id'),
+      // trackUrl удален отсюда
     };
   },
-  mounted() {
-    setTimeout(() => {
-      this.isPlayerVisible = true;
-    }, 100); // Небольшая задержка для срабатывания анимации
+  methods: {
+    updateParticipantsList(participantsArray) {
+      this.participants = participantsArray;
+    },
+    getCookie(name) {
+      const value = `; ${document.cookie}`;
+      const parts = value.split(`; ${name}=`);
+      if (parts.length === 2) return parts.pop().split(';').shift();
+      return null;
+    },
+    updateTracksList(tracksArray, currentIndex) {
+      this.tracks = tracksArray;
+      this.currentTrackIndex = currentIndex;
+    },
+    handleSendTrack(url) {
+      if (url && this.$refs.audioPlayer) {
+        this.$refs.audioPlayer.playTrack(url);
+      }
+    }
   }
 };
 </script>
 
-
-<style>
-.parent {
+<style scoped>
+.main-container {
   display: flex;
-  justify-content: center; /* Горизонтальное центрирование */
-  align-items: center;     /* Вертикальное центрирование */
-  height: 100vh;           /* Высота родительского контейнера (100% высоты экрана) */
+  justify-content: center; /* центрирует по горизонтали */
+  align-items: stretch;    /* чтобы блоки тянулись на всю высоту */
+  height: 100vh;           /* чтобы занять весь экран */
+  gap: 20px;               /* отступы между колонками */
+  padding: 20px;
+  box-sizing: border-box;
 }
 
-.temp {
-  max-height: 700px;
-  max-width: 700px;
-}
-
-.player-wrapper {
-  opacity: 0;
-  transition: opacity 1s ease;
-}
-
-.player-wrapper.visible {
-  opacity: 1;
-}
-</style>
-
-
-
-
-<!-- <template>
-  <div :class="['player-wrapper', { visible: isPlayerVisible }]">
-    <AudioPlayer :song="currentSong" />
-  </div>
-
-  <div class="participants-container">
-    <h3 class="participants-title">Участники ({{ participants.length }})</h3>
-    <ul id="participants-list" class="participants-list"></ul>
-  </div>
-</template>
-
-<script>
-import AudioPlayer from '@/components/player.vue';
-
-export default {
-  components: {
-    AudioPlayer
-  },
-  data() {
-    return {
-      currentSong: {
-        name: 'Name of song',
-        artist: 'Songer',
-        src: 'path/to/your/audio/file.mp3'
-      },
-      isPlayerVisible: false,
-      participants: [],
-      userId: 'Alex' // Здесь должен быть реальный ID текущего пользователя
-    };
-  },
-  mounted() {
-    setTimeout(() => {
-      this.isPlayerVisible = true;
-    }, 100);
-    
-    // Имитация получения данных
-    this.fetchParticipants();
-    socket.on('participants-updated', (newParticipants) => {
-    this.updateParticipantsList(newParticipants);
-});
-  },
-  methods: {
-    async fetchParticipants() {
-      try {
-    const response = await axios.get('/api/participants');
-    this.updateParticipantsList(response.data);
-      } catch (error) {
-    console.error('Ошибка получения участников:', error);
-      }
-    },
-    
-    // Ваша функция с минимальными изменениями
-    updateParticipantsList(participants) {
-      this.participants = participants; // Сохраняем данные реактивно
-      
-      const list = document.getElementById('participants-list');
-      list.innerHTML = '';
-      
-      participants.forEach(participant => {
-        const li = document.createElement('li');
-        li.className = 'participant-item';
-        
-        if (participant === this.userId) {
-          li.classList.add('you');
-        }
-
-        // Аватар с первой буквой имени
-        const avatar = document.createElement('div');
-        avatar.className = 'participant-avatar';
-        avatar.textContent = participant.charAt(0).toUpperCase();
-        li.appendChild(avatar);
-
-        // Имя участника
-        const nameSpan = document.createElement('span');
-        nameSpan.className = 'participant-name';
-        nameSpan.textContent = participant + (participant === this.userId ? ' (Вы)' : '');
-        li.appendChild(nameSpan);
-
-        // Статус
-        const status = document.createElement('span');
-        status.className = 'status-badge status-online';
-        status.textContent = 'online';
-        li.appendChild(status);
-
-        list.appendChild(li);
-      });
-    }
-  }
-};
-</script> -->
-
-<style>
-/* Стили из вашего CSS с дополнениями */
+/* Стили для левой колонки (участники) */
 .participants-container {
-  @apply bg-[rgba(255,255,255,0.1)] rounded-2xl p-6 border border-[#00d9e7] backdrop-blur;
-  max-width: 400px;
-  margin-top: 2rem;
+  width: 400px;
+  height: calc(100% - 40px);
+  margin-top: 20px;
+  border-radius: 30px;
 }
 
-.participants-title {
-  @apply text-2xl font-bold text-white mb-4 text-center;
-  text-shadow: 0 0 10px rgba(0, 217, 231, 0.5);
-}
+/* Центральная секция: очередь треков + поле ввода */
 
-.participants-list {
-  @apply list-none p-0 m-0;
-  max-height: 400px;
-  overflow-y: auto;
-}
-
-.participant-item {
-  @apply flex items-center py-3 px-4 mb-3 rounded-full transition-all duration-300;
-  background: rgba(208, 188, 255, 0.08);
-  border: 1px solid rgba(208, 188, 255, 0.2);
-}
-
-.participant-item.you {
-  background: rgba(208, 188, 255, 0.2);
-  border-color: rgba(208, 188, 255, 0.4);
-  box-shadow: 0 0 15px rgba(208, 188, 255, 0.2);
-}
-
-.participant-avatar {
-  @apply w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg mr-4;
-  background: linear-gradient(135deg, #D0BCFF 0%, #2EA48C 100%);
-  color: #1F1431;
-  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.3);
-}
-
-.participant-name {
-  @apply flex-grow text-white font-medium;
-  font-size: 1.1rem;
-}
-
-.status-badge {
-  @apply py-1 px-3 rounded-full text-xs font-bold uppercase;
-}
-
-.status-online {
-  background: rgba(46, 164, 79, 0.2);
-  color: #2EA44F;
-  border: 1px solid rgba(46, 164, 79, 0.4);
-}
-
-.parent {
+.center-section {
   display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
+  flex-direction: column;
+  border-radius: 30px;
+  backdrop-filter: blur(10px);
+  flex: 0 1 800px;
+  overflow: hidden;
+  min-height: 0;
+  height: 100%;
 }
 
-.temp {
-  max-height: 700px;
-  max-width: 700px;
+.Trackqueue {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 7px;
+  box-sizing: border-box;
 }
 
+
+/* .SendBlock {
+  padding: 16px 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(23, 18, 34, 0.7);
+} */
+
+ParticipantsList,
 .player-wrapper {
-  opacity: 0;
-  transition: opacity 1s ease;
+  width: 300px;
+  flex-shrink: 0;
 }
 
-.player-wrapper.visible {
-  opacity: 1;
+/* Стили для очереди треков */
+.queue-container {
+  flex-grow: 1;
+  overflow-y: auto;
+  padding: 20px;
 }
 </style>

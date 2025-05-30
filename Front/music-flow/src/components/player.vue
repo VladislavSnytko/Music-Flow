@@ -1,9 +1,5 @@
 <template>
-  <div ref="playerElement">  <!-- Добавлено -->
-    <div class="send-container">
-      <input type="text" id="track-url" placeholder="Вставьте ссылку на трек из Яндекс.Музыки" class="Send_link">
-        <send id="load-btn" class="Send" @click="playTrack"></send>
-    </div>
+  <div ref="playerElement"> 
   </div>
   <div class="music-player">
     <!-- Прелоадер с анимацией -->
@@ -11,8 +7,6 @@
       <div class="preloader-content">
         <div class="wave-container">
           <Logo class="Logo-player"></Logo>
-          
-          <!-- <div class="wave" v-for="i in 5" :key="i" :style="`--index:${i}`"></div> -->
         </div>
         <div class="loading-text">Загрузка плеера...</div>
       </div>
@@ -57,7 +51,7 @@ import play_past_button from '@/assets/play_past_button.vue';
 import play_next_button from '@/assets/play_next_button.vue';
 import playControlBlock from '@/components/play-control-block.vue';
 import volume from '@/components/volume.vue';
-import Send from '@/assets/Send.vue';
+// import Send from '@/assets/Send.vue';
 import Logo from '@/assets/Logo-for-player.vue';
 import TimeBar from '../components/time-bar.vue';
 import { gsap } from 'gsap';
@@ -69,21 +63,23 @@ const DOMAIN = import.meta.env.VITE_DOMAIN;
 
 
 export default {
-  components: { play_button_pause,
+  emits: ['participants-update', 'update-tracks'], // ✅ Должно быть на верхнем уровне объекта
+  components: {
+    play_button_pause,
     volume,
-    Send,
-    Logo, 
-    play_button_active, 
-    play_past_button, 
-    play_next_button, 
-    playControlBlock, 
-    TimeBar},
-    props: {
+    Logo,
+    play_button_active,
+    play_past_button,
+    play_next_button,
+    playControlBlock,
+    TimeBar
+  },
+  props: {
     song: {
-        type: Object,
-        default: () => ({ name: '', artist: '', src: '' })
-      }
-    },
+      type: Object,
+      default: () => ({ name: '', artist: '', src: '' })
+    }
+  },
     
     audioRef: {
       type: Object,
@@ -99,6 +95,7 @@ export default {
         currentTime: 0,
         currentVolume: 1,
         duration: 0,
+        currentTrackIndex: 0,
         interval: null,
         isDragging: false,
         socket: null,
@@ -106,7 +103,12 @@ export default {
         currentAudio: null,
         isSyncing: false,
         currentTrack: null,
-        progress: null
+        progress: null,
+        list_tracks: [],
+        room_id: 'faf1c5d6-da2f-4fb5-88a6-7023d40d62ff',
+        response: null,
+        json_with_list: null,
+        nextTrackTimeout: null
       };
     },
   computed: {
@@ -200,9 +202,25 @@ loadContent() {
     
     this.currentAudio = this.$refs.audioElement; // Инициализируем currentAudio из ref
 
-        this.currentAudio.addEventListener('ended', async () => {
-      console.log('Трек завершился, плавно переключаем на следующий');
-      await this.sendNextTrack();
+    //     this.currentAudio.addEventListener('ended', () => {
+    //   console.log('Трек завершился, плавно переключаем на следующий');
+    //   this.sendNextTrack();
+    // });
+    let isTrackEnding = false;
+
+    this.currentAudio.addEventListener('ended', async () => {
+      if (isTrackEnding) return;
+      isTrackEnding = true;
+
+      // Ждём 500мс, чтобы "поймать" другие срабатывания
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Проверяем, что трек действительно закончился
+      if (Math.abs(this.currentAudio.currentTime - this.currentAudio.duration) < 1) {
+        await this.sendNextTrack();
+      }
+
+      isTrackEnding = false;
     });
 
 
@@ -291,6 +309,12 @@ methods: {
     }
   },
 
+  updateTracksList(tracksArray, currentIndex) {
+    this.list_tracks = tracksArray;
+    this.currentTrackIndex = currentIndex;
+    this.$emit('update-tracks', tracksArray, currentIndex);
+  },
+
 
   async initWebSocket() {
   // Получаем user_id из куки
@@ -309,7 +333,7 @@ methods: {
 
       // const wsProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
       this.socket = new WebSocket(
-        `wss://${DOMAIN}/room/faf1c5d6-da2f-4fb5-88a6-7023d40d62ff/ws?user_id=${this.userId}`
+        `wss://${DOMAIN}/room/${this.room_id}/ws?user_id=${this.userId}`
       );
 
       this.socket.onopen = () => {
@@ -323,7 +347,7 @@ methods: {
         await this.handleSocketMessage(data);
       };
 
-      this.socket.onclose = () => {
+    this.socket.onclose = async () => {
         console.log('Disconnected from room');
       };
     },
@@ -403,6 +427,10 @@ methods: {
         case 'init':
           // Обрабатываем все данные сразу
           if (data.track_url) {
+            this.response = await fetch(`https://${DOMAIN}/get_queue_tracks?room_id=${this.room_id}&track_id=`);
+            this.json_with_list = await this.response.json();
+            this.updateTracksList(this.json_with_list.list_track, this.json_with_list.index);
+            // console.log(json_with_list);
             await this.loadTrack(data.track_url, async () => {
               console.log('time from bd:', data.current_time);
               this.currentAudio.currentTime = data.current_time;
@@ -447,19 +475,45 @@ methods: {
         if (data.tracks && data.tracks.length > 0 && !this.isSyncing) {
           await this.loadTrack(data.tracks[data.index]);
         }
+        if (data.tracks) {
+          this.updateTracksList(data.tracks, data.index);
+        }
         break;
         case 'seek':
           console.log(data)
           await this.handleSeekMessage(data);
           break;
+        // case 'participants_update':
+        //   // Сюда приходят ники участников
+        //   console.log(`participants:`, data.participants);
+        //   // updateParticipantsList(data.participants);
+        //   break;
         case 'participants_update':
-          console.log(`participants:`, data.participants);
-          // updateParticipantsList(data.participants);
-          break;
+          console.log('participants:', data.participants);
+          const formattedParticipants = Object.entries(data.participants).map(
+            ([id, name]) => ({ id, name })
+          );
+          this.$emit('participants-update', formattedParticipants);
+        break;
         case 'load_track':
+          // var response = await fetch(`https://${DOMAIN}/get_queue_tracks?room_id=${this.room_id}`);
+          // var json_with_list = await response.json();
+          this.updateTracksList(this.json_with_list.list_track, data.index);
           await this.loadTrack(data.url);
           break
         // ... другие типы сообщений
+        case 'add_track':
+        // if (data.tracks) {
+          // const updatedTracks = [...this.list_tracks, ...data.tracks];
+          var response2 = await fetch(`https://${DOMAIN}/get_queue_tracks?room_id=${this.room_id}&track_id=${data.track_id}`);
+          var json_with_list2 = await response2.json();
+          console.log(json_with_list2);
+          this.json_with_list.list_track.push(json_with_list2.new_track);
+          console.log(json_with_list);
+          this.updateTracksList(this.json_with_list.list_track, this.index);
+          this.updateTracksList(updatedTracks, this.currentTrackIndex);
+        // }
+        break;
       }
     },
     async handlePlayMessage(data) {
@@ -527,9 +581,9 @@ methods: {
     //     //   alert('Не удалось загрузить трек');
     //     // });
     // },
-  async playTrack() {
+  async playTrack(url) {
 
-    const url = document.getElementById('track-url').value.trim();
+    // const url = document.getElementById('track-url').value.trim();
     console.log(url);
     if (!url.includes('music.yandex.')) {
       alert('Пожалуйста, введите ссылку Яндекс.Музыки');
@@ -563,14 +617,28 @@ methods: {
       }));
     }
   },
-  async sendNextTrack() {
-    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+  // async sendNextTrack() {
+  //   if (this.socket && this.socket.readyState === WebSocket.OPEN) {
 
-      this.sendPauseCommand();
-      await this.socket.send(JSON.stringify({
-        type: 'next_track'
-      }));
-    }
+  //     this.sendPauseCommand();
+  //     await this.socket.send(JSON.stringify({
+  //       type: 'next_track'
+  //     }));
+      
+  //   }
+  // },
+  async sendNextTrack() {
+    if (this.nextTrackTimeout) clearTimeout(this.nextTrackTimeout);
+
+    this.nextTrackTimeout = setTimeout(async () => {
+      if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+        this.sendPauseCommand();
+        await this.socket.send(JSON.stringify({
+          type: 'next_track'
+        }));
+      }
+      this.nextTrackTimeout = null;
+    }, 300); // Задержка 300мс
   },
   async sendPrevTrack() {
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
