@@ -397,6 +397,59 @@ async def track_and_stream(url: str, user_id: str):
     except Exception as e:
         print(str(e))
         raise HTTPException(status_code=400, detail=str(e))
+    
+
+@app.get("/get_queue_tracks")
+async def get_queue_tracks(room_id: str, track_id: str):
+    room_model = RoomsServices(db)
+    info = await room_model.get_tracks_from_room(room_id)
+    tracks = []
+    print(info)
+    client = Client(OAUTH_TOKEN).init()
+    try:
+        if track_id:
+            # clean_url = url.split("?")[0]
+            # track_id = clean_url.split("track/")[1].split("/")[0]
+            
+            track = client.tracks(track_id)[0]
+            track_info = {
+                "title": track.title,
+                "artist": track.artists[0].name,
+                "cover": f"https://{track.cover_uri.replace('%%', '50x50')}"
+            }
+            print(track_info)
+            return JSONResponse(content={'new_track': track_info},
+                            headers={
+                                "Access-Control-Allow-Origin": DOMAIN,
+                                "Access-Control-Allow-Credentials": "true",
+                            })
+        for url in info['list_track']:
+            clean_url = url.split("?")[0]
+            # print(f"{url} - {user_id}")
+            track_id = clean_url.split("track/")[1].split("/")[0]
+            print('type:', type(track_id))
+            # track = await get_cached_track_info(track_id, user_id)
+            
+            track = client.tracks(track_id)[0]
+            # download_info = track.get_download_info(get_direct_links=True)[0]
+            # stream_url = download_info.get_direct_link()
+
+            track_info = {
+                "title": track.title,
+                "artist": track.artists[0].name,
+                "cover": f"https://{track.cover_uri.replace('%%', '50x50')}"
+            }
+            print(track_info)
+            tracks.append(track_info)
+
+        return JSONResponse(content={'list_track': tracks, 'index': info['index']},
+                            headers={
+                                "Access-Control-Allow-Origin": DOMAIN,
+                                "Access-Control-Allow-Credentials": "true",
+                            })
+    except Exception as e:
+        print(str(e))
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @app.get("/stream")

@@ -1,5 +1,6 @@
 import asyncio
 import uuid
+import time
 from fastapi import WebSocket, WebSocketDisconnect
 from .websocket_manager import ConnectionManager  # Импортируй правильно свой файл!
 
@@ -8,6 +9,7 @@ class WebSocketRoutes:
         self.manager = manager
         self.message_queues = {}
         self.time_responses = {}
+        self.last_track_change = 0
 
     async def handle_websocket(self, websocket: WebSocket, room_id: str, user_id: str):
         try:
@@ -22,7 +24,7 @@ class WebSocketRoutes:
         message_queue = asyncio.Queue()
         self.message_queues[websocket] = message_queue
 
-        reader_task = asyncio.create_task(self._message_reader(websocket, message_queue))
+        reader_task = asyncio.create_task(self._message_reader(websocket, message_queue, room_id, user_id))
         try:
             # Получаем актуальное время
             current_position = await self._get_consensus_time(room_id, exclude_user=user_id)
@@ -48,13 +50,22 @@ class WebSocketRoutes:
             await self.manager.disconnect(room_id, user_id)
             self.message_queues.pop(websocket, None)
 
-    async def _message_reader(self, websocket: WebSocket, queue: asyncio.Queue):
+    async def _message_reader(self, websocket: WebSocket, queue: asyncio.Queue, room_id: str, user_id: str):
         try:
             while True:
                 data = await websocket.receive_json()
                 await queue.put(data)
-        except Exception:
-            pass  # Выход из ридера на разрыве соединения
+        except WebSocketDisconnect:
+            print(f"WebSocket disconnected for user {user_id}")
+        except asyncio.CancelledError:
+            # Корректно обрабатываем отмену задачи
+            print('asyncio disconnect')
+            pass
+        finally:
+            await self.manager.disconnect(room_id, user_id)
+            self.message_queues.pop(websocket, None)
+        # except Exception as e:
+        #     print('ERROR 66:', str(e))
 
     async def _get_consensus_time(self, room_id: str, exclude_user: str) -> float:
         # Запрашиваем время у всех участников
@@ -194,9 +205,20 @@ class WebSocketRoutes:
                 if len(room_state['list_track']) == 1:
                     await self.manager.broadcast(room_id, {
                     "type": "load_track",
-                    "url": room_state['list_track'][0]
+                    "url": room_state['list_track'][0],
+                    'index': 0
                 })
+                clean_url = tracks[0].split("?")[0]
+                track_id = clean_url.split("track/")[1].split("/")[0]
+                await self.manager.broadcast(room_id, {
+                        "type": "add_track",
+                        'track_id': track_id
+                    })
         elif msg_type == "next_track":
+            current_time = time.time()
+            if hasattr(self, 'last_track_change') and current_time - self.last_track_change < 4.0:
+                return
+            self.last_track_change = current_time
             room_state = await self.manager.get_room_state(room_id)
             new_index = (room_state['index_track'] + 1) % len(room_state['list_track'])
             await self.manager.update_room_state(room_id, {
@@ -206,7 +228,8 @@ class WebSocketRoutes:
                 })
             await self.manager.broadcast(room_id, {
                     "type": "load_track",
-                    "url": room_state['list_track'][new_index]
+                    "url": room_state['list_track'][new_index],
+                    'index': new_index
                 })
         elif msg_type == "previous_track":
             room_state = await self.manager.get_room_state(room_id)
@@ -228,13 +251,15 @@ class WebSocketRoutes:
                 })
             await self.manager.broadcast(room_id, {
                     "type": "load_track",
-                    "url": room_state['list_track'][new_index]
+                    "url": room_state['list_track'][new_index],
+                    'index': new_index
                 })
 
         elif msg_type == "get_participants":
             participants = list(self.manager.active_connections.get(room_id, {}).keys())
-            await websocket.send_json({
-                "type": "participants_update",
-                "participants": participants
-            })
+            # await websocket.send_json({
+            #     "type": "participants_update",
+            #     "participants": participants
+            # })
+            await self.manager.update_participants(room_id)
 

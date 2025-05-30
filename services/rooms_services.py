@@ -66,7 +66,14 @@ class RoomsServices:
             await session.commit()
             
             return room
-
+        
+    async def get_tracks_from_room(self, room_id: str) -> dict:
+        async with self.db.session_factory() as session:
+            result = await session.execute(
+                    select(Rooms).where(Rooms.id == room_id)
+                )
+            room = result.scalar_one_or_none()
+            return {'list_track': room.list_track, 'index': room.index_track}
 
     async def create_database(self):
     # Создает все таблицы, определенные в Base.metadata

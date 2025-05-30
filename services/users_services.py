@@ -117,6 +117,18 @@ class UserServices:
                     status_code=401, detail="Не удалось получить данные профиля Яндекса"
                 )
             return response.json()
+        
+    async def get_users_from_room(self, list_id: list) -> dict:
+        users = {}
+        async with self.db.session_factory() as session:
+            print('222')
+            for user_id in list_id:
+                result = await session.execute(
+                    select(Users).where(Users.id == user_id)
+                )
+                user = result.scalar_one_or_none()
+                users[user_id] = user.username
+            return users
 
         
 if __name__ == '__main__':

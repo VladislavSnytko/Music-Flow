@@ -3,6 +3,7 @@ import uuid
 from fastapi import WebSocket, WebSocketDisconnect
 from sqlalchemy import select
 from models.Rooms import Rooms
+from services.users_services import UserServices
 from db.base import Database
 
 class ConnectionManager:
@@ -18,15 +19,11 @@ class ConnectionManager:
         await self.update_participants(room_id)
 
     async def disconnect(self, room_id: str, user_id: str):
-        print(3, room_id, user_id)
+        # print(3, room_id, user_id)
         if room_id in self.active_connections and user_id in self.active_connections[room_id]:
             del self.active_connections[room_id][user_id]
-            if not self.active_connections[room_id]:
-                print(1, user_id)
-                del self.active_connections[room_id]
-            else:
-                print(2, user_id)
-                await self.update_participants(room_id)
+            await self.update_participants(room_id)
+                
 
     async def broadcast(self, room_id: str, message: dict, exclude_user: str = None):
         if room_id not in self.active_connections:
@@ -47,7 +44,8 @@ class ConnectionManager:
     async def update_participants(self, room_id: str):
         participants = list(self.active_connections[room_id].keys()) if room_id in self.active_connections else []
         await self.update_room_state(room_id, {"list_of_participants": participants})
-        await self.broadcast(room_id, {"type": "participants_update", "participants": participants})
+        users_nicknames = await UserServices(self.db).get_users_from_room(participants)
+        await self.broadcast(room_id, {"type": "participants_update", "participants": users_nicknames})
 
     async def get_room_state(self, room_id: str):
         async with self.db.session_factory() as session:
