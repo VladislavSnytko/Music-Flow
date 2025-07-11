@@ -43,12 +43,22 @@ async def add_csp_header(request: Request, call_next):
     )
     return response
 
+<<<<<<< HEAD
 # Базовый эндпоинт
 @app.get("/", response_class=HTMLResponse)
 async def player_page(request: Request):
     cookies = request.cookies
     print(cookies)
     return templates.TemplateResponse("player.html", {"request": request})
+=======
+
+@app.get("/", response_class=JSONResponse)
+async def player_page():
+    # cookies = request.cookies
+    # print(cookies)
+    return {'status': 'worked'}
+    # return templates.TemplateResponse("player.html", {"request": request})
+>>>>>>> 86ce224c1c09b459b92e4ba057b3c2cb1d942dd5
 
 
 
@@ -58,5 +68,6 @@ if __name__ == "__main__":
     uvicorn.run(
         "main:app",
         port=444,
+        port=8000,
         reload=True,  # Автоперезагрузка при изменениях
     )

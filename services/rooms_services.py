@@ -73,6 +73,7 @@ class RoomsServices:
                     select(Rooms).where(Rooms.id == room_id)
                 )
             room = result.scalar_one_or_none()
+            print(room.list_track)
             return {'list_track': room.list_track, 'index': room.index_track}
 
     async def create_database(self):
@@ -85,5 +86,5 @@ if __name__ == '__main__':
     d = Database()
     b = RoomsServices(d)
     # asyncio.run(b.create_database())
-    asyncio.run(b.get_all())
+    asyncio.run(b.get_tracks_from_room('faf1c5d6-da2f-4fb5-88a6-7023d40d62ff'))
     # b.create_database()
