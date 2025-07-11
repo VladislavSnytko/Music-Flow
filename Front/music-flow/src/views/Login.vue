@@ -31,7 +31,7 @@ onMounted(() => {
         // 2. Отправляем токен на сервер для валидации
         console.log(code);
         const response = await fetch(
-          `https://${DOMAIN}/check_token?code=${encodeURIComponent(code)}`,
+          `/api/auth/check_token?code=${encodeURIComponent(code)}`,
           {
             method: 'GET',
             headers: {

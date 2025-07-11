@@ -263,7 +263,8 @@ body {
 }
 
 ::selection {
-  background-color: rgba(123, 99, 148,0.25); /* Цвет фона выделения */
+  /* Цвет фона выделения */
+  background-color: rgba(123, 99, 148, 0.25); 
   color: white;              /* Цвет текста при выделении */
 }
 

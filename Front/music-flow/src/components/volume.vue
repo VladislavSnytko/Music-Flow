@@ -30,52 +30,45 @@ export default {
 </script>
 
 <style scoped>
-/* Стили остаются без изменений */
 .volume-control {
   display: flex;
   align-items: center;
-  position: absolute;
-  bottom: 5%;
-  left: 50%;
-  transform: translateX(-50%);
+  width: 50%;
+  max-width: min(80vw, 300px);
   color: white;
+  gap: min(1vw, 10px);
 }
 
 input[type="range"] {
-  margin: 0 10px;
-  width: 150px;
+  flex: 1;
+  min-width: 50px;
+  margin: 0;
   background: linear-gradient(to right, #00CED1, #008fee);
-  /* background-color: white; */
-  opacity: 1;
-  height: 5px;
+  height: min(0.8vh, 5px);
   border-radius: 5px;
   outline: none;
   -webkit-appearance: none;
-  position: relative;
-  z-index: 1;
 }
 
-/* Стилизация тумблера: скрыт по умолчанию */
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 15px;
-  height: 15px;
+  width: min(1.5vh, 15px);
+  height: min(1.5vh, 15px);
   background: white;
   border-radius: 50%;
   cursor: pointer;
-  opacity: 0; /* скрыт */
+  opacity: 0;
   transition: opacity 0.2s ease;
 }
 
-/* Показываем тумблер при наведении на сам input */
 input[type="range"]:hover::-webkit-slider-thumb {
   opacity: 1;
 }
 
 /* Для Firefox */
 input[type="range"]::-moz-range-thumb {
-  width: 15px;
-  height: 15px;
+  width: min(1.5vh, 15px);
+  height: min(1.5vh, 15px);
   background: white;
   border-radius: 50%;
   cursor: pointer;
@@ -87,11 +80,46 @@ input[type="range"]:hover::-moz-range-thumb {
   opacity: 1;
 }
 
-.volume-icon {
-  background: none;
-  border: none;
-  color: white;
-  font-size: 20px;
-  cursor: pointer;
+/* Всегда показывать ползунок на мобильных */
+@media (hover: none) {
+  input[type="range"]::-webkit-slider-thumb {
+    opacity: 1 !important;
+  }
+  input[type="range"]::-moz-range-thumb {
+    opacity: 1 !important;
+  }
+}
+
+/* Адаптация для маленьких высот */
+@media (max-height: 600px) {
+  input[type="range"] {
+    height: min(0.7vh, 4px);
+  }
+  
+  input[type="range"]::-webkit-slider-thumb {
+    width: min(1.3vh, 12px);
+    height: min(1.3vh, 12px);
+  }
+}
+
+@media (max-height: 500px) {
+  input[type="range"] {
+    height: min(0.6vh, 3px);
+  }
+  
+  input[type="range"]::-webkit-slider-thumb {
+    width: min(1.1vh, 10px);
+    height: min(1.1vh, 10px);
+  }
+}
+
+@media (max-height: 400px) {
+  .volume-control {
+    max-width: min(75vw, 200px);
+  }
+  
+  input[type="range"] {
+    height: min(0.5vh, 2px);
+  }
 }
 </style>

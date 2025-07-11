@@ -25,21 +25,28 @@
           <p id="artist" class="song-artist">{{ currentArtist }}</p>
         </div>
 
-        <div class="progress-container">
-          <TimeBar :currentTime="currentTime" :duration="duration" @seek="onSeek" ref="timeBar" />
-        </div>
+        <div class="player-controls">
+          <div class="progress-container">
+            <TimeBar :currentTime="currentTime" :duration="duration" @seek="onSeek" ref="timeBar" />
+          </div>
 
         <div class="controls" ref="controls">
           <play-control-block :is-playing="isPlaying" @play="sendPlayCommand" @pause="sendPauseCommand"
             @prev="prevTrack" @next="nextTrack" ref="playControl" />
         </div>
-      </div>
-      <volume 
+        <div class="volume-container">
+          <volume 
             v-if="!isLoading"
             :volume="currentVolume"
             @update:volume="handleVolumeUpdate"
             ref="volumeControl"
-      ></volume>
+          />
+        </div>
+        </div>
+
+
+      </div>
+
     </div>
   </div>
 </template>
@@ -333,7 +340,8 @@ methods: {
 
       // const wsProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
       this.socket = new WebSocket(
-        `wss://${DOMAIN}/room/${this.room_id}/ws?user_id=${this.userId}`
+        `/ws/room/${this.room_id}/ws?user_id=${this.userId}`
+        // `/wss/room/${this.room_id}/ws?user_id=${this.userId}`
       );
 
       this.socket.onopen = () => {
@@ -427,7 +435,10 @@ methods: {
         case 'init':
           // Обрабатываем все данные сразу
           if (data.track_url) {
-            this.response = await fetch(`https://${DOMAIN}/get_queue_tracks?room_id=${this.room_id}&track_id=`);
+            // this.response = await fetch(`/api/get_queue_tracks?room_id=${this.room_id}&track_id=`);
+            // this.response = await fetch(`/api/rooms/${this.room_id}/qeue&track_id=`);
+            this.response = await fetch(`/api/rooms/${this.room_id}/queue?track_id=`);
+            // this.response = await fetch(`/api/rooms/${this.room_id}/queue?track_id=${data.track_id}`);
             this.json_with_list = await this.response.json();
             this.updateTracksList(this.json_with_list.list_track, this.json_with_list.index);
             // console.log(json_with_list);
@@ -505,13 +516,14 @@ methods: {
         case 'add_track':
         // if (data.tracks) {
           // const updatedTracks = [...this.list_tracks, ...data.tracks];
-          var response2 = await fetch(`https://${DOMAIN}/get_queue_tracks?room_id=${this.room_id}&track_id=${data.track_id}`);
+          // var response2 = await fetch(`/api/get_queue_tracks?room_id=${this.room_id}&track_id=${data.track_id}`);
+          var response2 = await fetch(`/api/rooms/${this.room_id}/queue?track_id=${data.track_id}`);
           var json_with_list2 = await response2.json();
           console.log(json_with_list2);
           this.json_with_list.list_track.push(json_with_list2.new_track);
-          console.log(json_with_list);
+          console.log(this.json_with_list);
           this.updateTracksList(this.json_with_list.list_track, this.index);
-          this.updateTracksList(updatedTracks, this.currentTrackIndex);
+          // this.updateTracksList(updatedTracks, this.currentTrackIndex);
         // }
         break;
       }
@@ -555,12 +567,12 @@ methods: {
     //     user_id: "9d9f17c3-ad1e-441f-9955-0590286bc61c",
     //     password: 'secret'
     //   };
-    //   this.currentAudio.src = `https://${DOMAIN}/stream?url=${encodeURIComponent(trackUrl)}&user_id=${data.user_id}`;
+    //   this.currentAudio.src = `/api/stream?url=${encodeURIComponent(trackUrl)}&user_id=${data.user_id}`;
 
-    //   const trackInfo = await fetch(`https://${DOMAIN}/track_info?url=${encodeURIComponent(trackUrl)}&user_id=${data.user_id}`);
+    //   const trackInfo = await fetch(`/api/track_info?url=${encodeURIComponent(trackUrl)}&user_id=${data.user_id}`);
     //   console.log(`trackInfo: `, trackInfo);
       
-    //   await fetch(`https://${DOMAIN}/stream?url=${encodeURIComponent(trackUrl)}&user_id=${data.user_id}`)
+    //   await fetch(`/api/stream?url=${encodeURIComponent(trackUrl)}&user_id=${data.user_id}`)
     //     .then(response => {
     //       const trackInfo = JSON.parse(response.headers.get('Track-Info'));
     //       console.log('response:', response.headers);
@@ -729,7 +741,9 @@ methods: {
             });
           }
 
-          const response = await fetch(`https://${DOMAIN}/track_and_stream?url=${encodeURIComponent(trackUrl)}&user_id=${this.userId}`);
+
+          const response = await fetch(`/api/tracks/track_and_stream?url=${encodeURIComponent(trackUrl)}&user_id=${this.userId}`);
+
           const data = await response.json();
 
           // Обновляем данные
@@ -737,7 +751,39 @@ methods: {
           this.currentArtist = data.artist;
           this.$refs.coverImage.src = data.cover;
 
-          this.currentAudio.src = `https://${DOMAIN}${data.stream_url}`;
+          this.currentAudio.src = `/api/tracks${data.stream_url}`;
+          
+
+          // Добавляем Media Session API здесь
+          if ('mediaSession' in navigator) {
+            navigator.mediaSession.metadata = new MediaMetadata({
+              title: data.title,
+              artist: data.artist,
+              artwork: [{ src: data.cover, sizes: '400x400', type: 'image/jpeg' }]
+            });
+            
+
+            
+            
+            // Обработчики медиа-кнопок
+            navigator.mediaSession.setActionHandler('play', () => {
+              this.sendPlayCommand();
+            });
+
+            navigator.mediaSession.setActionHandler('pause', () => {
+              this.sendPauseCommand();
+            });
+
+            navigator.mediaSession.setActionHandler('previoustrack', () => {
+              this.prevTrack();
+            });
+
+            navigator.mediaSession.setActionHandler('nexttrack', () => {
+              this.nextTrack();
+            });
+          }
+
+          this.currentAudio.src = `/api/tracks${data.stream_url}`;
 
           await new Promise((resolve) => {
             this.currentAudio.oncanplay = () => {
@@ -879,7 +925,7 @@ handleDrag(e) {
 </script>
 
 
-<style scoped>
+<!-- <style scoped>
 
 
 /* Временный стиль для Sand Track */
@@ -953,7 +999,7 @@ handleDrag(e) {
 } */
 
 /* Общие стили плеера */
-.music-player {
+/* .music-player {
   position: absolute;
   right: 5px;
   top: 80px;
@@ -968,6 +1014,69 @@ handleDrag(e) {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+} */
+
+.music-player {
+  width: 100%;
+  height: 100%;
+  min-height: 700px;
+  background: rgba(23, 18, 34, 0.5);
+  border-radius: 60px;
+  backdrop-filter: blur(10px);
+  padding: 30px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+/* player.vue - добавить в секцию стилей */
+@media (max-width: 1024px) {
+  .music-player {
+    border-radius: 30px;
+    padding: 15px;
+  }
+
+  .song-title {
+    font-size: 22px;
+    margin-bottom: 5px;
+  }
+
+  .song-artist {
+    font-size: 16px;
+  }
+
+  .progress-container {
+    margin: 10px 0;
+  }
+
+  .frame {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1/1; /* Сохраняем квадратное соотношение */
+    max-height: 350px;
+    margin-bottom: 20px;
+  }
+
+  .player-content {
+    padding: 20px;
+  }
+
+  .song-title {
+    font-size: 24px;
+  }
+
+  .song-artist {
+    font-size: 18px;
+  }
+
+  .controls {
+    position: relative;
+    bottom: auto;
+    padding: 20px;
+    left: auto;
+    transform: none;
+    margin: 20px 0;
+  }
 }
 
 /* .music-player {
@@ -1089,6 +1198,7 @@ handleDrag(e) {
   justify-content: center;
   align-items: center;
   gap: 20px;
+  padding: 50px;
   position: absolute;
   bottom: 20%;
   left: 50%;
@@ -1156,5 +1266,475 @@ handleDrag(e) {
   letter-spacing: 2px;
   text-transform: uppercase;
   font-weight: 300;
+}
+</style> -->
+
+
+<!-- <style scoped>
+.music-player {
+  width: 100%;
+  height: 100%;
+  min-height: 700px;
+  background: rgba(23, 18, 34, 0.5);
+  border-radius: 60px;
+  backdrop-filter: blur(10px);
+  padding: 30px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.player-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Контейнер для обложки трека */
+.frame {
+  position: relative;
+  width: 100%;
+  max-width: 400px; /* Максимальный размер на больших экранах */
+  height: 0;
+  padding-bottom: 100%; /* Сохраняем квадратное соотношение 1:1 */
+  margin: 0 auto 30px;
+  background: rgba(18, 11, 33, 0.75);
+  border-radius: 30px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.image_track {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 30px;
+  transition: transform 0.3s ease; /* Плавное изменение масштаба */
+}
+
+/* Основное содержимое плеера */
+.player-content {
+  width: 100%;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 0 15px;
+}
+
+/* Информация о треке */
+.song-info {
+  text-align: left;
+  margin-bottom: 25px;
+  width: 100%;
+}
+
+.song-title {
+  font-size: 30px;
+  font-weight: bold;
+  color: #9925BA;
+  margin-bottom: 5px;
+  word-break: break-word;
+}
+
+.song-artist {
+  font-size: 20px;
+  font-weight: bold;
+  color: #935DA2;
+}
+
+/* Прогресс-бар */
+.progress-container {
+  width: 100%;
+  margin: 20px 0;
+}
+
+/* Элементы управления */
+.controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  margin: 30px 0;
+  width: 100%;
+}
+
+/* Обновленные стили для громкости */
+.volume-control-wrapper {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+/* Адаптация для мобильных устройств */
+@media (max-width: 1024px) {
+  .volume-control-wrapper {
+    margin-top: 15px;
+  }
+}
+
+@media (max-width: 768px) {
+  .volume-control-wrapper {
+    margin-top: 10px;
+  }
+}
+
+/* Прелоадер */
+.preloader {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(18, 11, 33, 0.75);
+  border-radius: 60px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 100;
+}
+
+/* Адаптация для мобильных устройств */
+@media (max-width: 1024px) {
+  .music-player {
+    min-height: auto;
+    padding: 20px;
+    border-radius: 30px;
+  }
+
+  .frame {
+    max-width: 300px;
+    margin-bottom: 20px;
+  }
+
+  .song-title {
+    font-size: 24px;
+  }
+
+  .song-artist {
+    font-size: 18px;
+  }
+
+  .controls {
+    margin: 20px 0;
+    gap: 15px;
+  }
+
+  .player-content {
+    padding: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .music-player {
+    padding: 15px;
+  }
+
+  .frame {
+    max-width: 100%;
+    border-radius: 20px;
+  }
+
+  .song-title {
+    font-size: 22px;
+  }
+
+  .song-artist {
+    font-size: 16px;
+  }
+
+  .controls {
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 15px 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .song-title {
+    font-size: 20px;
+  }
+
+  .song-artist {
+    font-size: 14px;
+  }
+
+  .controls {
+    margin: 10px 0;
+  }
+}
+</style> -->
+
+
+<style scoped>
+.music-player {
+  width: 100%;
+  height: 100%;
+  min-height: 500px;
+  background: rgba(23, 18, 34, 0.5);
+  border-radius: 60px;
+  backdrop-filter: blur(10px);
+  padding: 40px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+.player-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.player-grid {
+  display: grid;
+  grid-template-areas: 
+    "cover content"
+    "cover content";
+  grid-template-columns: minmax(200px, 1fr) 2fr;
+  grid-template-rows: 1fr;
+  gap: 20px;
+  height: 100%;
+}
+
+.player-controls {
+  display: flex;
+  flex-direction: column;
+  gap: min(1.5vh, 15px);
+  margin-top: auto;
+  width: 100%;
+}
+
+.preloader {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: 2px solid #10adb87e;
+  border-radius: 60px;
+  backdrop-filter: blur(10px);
+  display: flex;
+  justify-content: center; /* Центрирование по горизонтали */
+  align-items: center; /* Центрирование по вертикали */
+  z-index: 100;
+  box-sizing: border-box;
+  padding: 0;
+}
+
+.preloader-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* Центрирование содержимого по горизонтали */
+  justify-content: center; /* Центрирование содержимого по вертикали */
+  gap: 30px;
+  width: 100%; /* Занимает всю доступную ширину */
+  height: 100%; /* Занимает всю доступную высоту */
+}
+
+.wave-container {
+  display: flex;
+  align-items: center; /* Центрирование волн по вертикали */
+  justify-content: center; /* Центрирование волн по горизонтали */
+  height: 60px;
+  gap: 8px;
+  width: 100%; /* Занимает всю доступную ширину */
+}
+
+.Logo-player {
+  width: 120px;
+  height: 120px;
+  object-fit: contain;
+  margin: 0 auto; /* Центрирование логотипа */
+}
+
+.loading-text {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 18px;
+  font-weight: 300;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  text-align: center;
+  padding: 10px 20px;
+}
+
+
+
+.cover-container {
+  grid-area: cover;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1/1;
+  max-height: 40vh;
+  max-width: 40vh;
+  margin: 0 auto;
+  background: rgba(18, 11, 33, 0.75);
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+
+
+.image_track {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  user-select: none;
+  pointer-events: none;
+}
+
+.content-container {
+  grid-area: content;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 100%;
+}
+
+.song-info {
+  padding: 20px;
+  text-align: left;
+  margin-bottom: 15px;
+  user-select: none;
+}
+
+.song-title {
+  font-size: clamp(18px, 3vw, 30px);
+  font-weight: bold;
+  color: #9925BA;
+  margin-bottom: 5px;
+  word-break: break-word;
+  user-select: none;
+}
+
+.song-artist {
+  font-size: clamp(14px, 2vw, 20px);
+  color: #935DA2;
+}
+
+.progress-container {
+  width: 100%;
+  margin: 15px 0;
+}
+
+.volume-container {
+  position: relative;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin-top: auto;
+  padding: 20px 0;
+}
+
+/* Адаптивные стили */
+@media (max-width: 1024px) {
+  .volume-container {
+    padding: 15px 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .volume-container {
+    padding: 10px 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .volume-container {
+    padding: 5px 0;
+  }
+}
+
+.controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: min(2vw, 20px);
+  margin: min(1vh, 10px) 0;
+}
+
+.volume-container {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  padding: min(1vh, 10px) 0;
+}
+
+/* Адаптация для разных соотношений сторон */
+/* @media (max-aspect-ratio: 1/1) {
+  .player-grid {
+    grid-template-areas: 
+      "cover"
+      "content";
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+  
+  .frame {
+    max-width: 300px;
+    margin: 0 auto;
+  }
+} */
+
+@media (max-width: 768px) {
+  .music-player {
+    padding: 15px;
+    border-radius: 50px;
+  }
+  
+  .player-grid {
+    gap: 15px;
+  }
+  
+  .controls {
+    gap: 10px;
+    margin: 15px 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .frame {
+    max-width: 250px;
+  }
+  
+  .song-title {
+    font-size: clamp(16px, 5vw, 24px);
+  }
+  
+  .song-artist {
+    font-size: clamp(12px, 4vw, 18px);
+  }
+}
+
+/* Специфичные медиа-запросы для разных соотношений */
+/* @media (aspect-ratio: 16/10) {
+  .player-grid {
+    grid-template-columns: minmax(180px, 1fr) 2fr;
+  }
+} */
+
+@media (aspect-ratio: 3/2) {
+  .player-grid {
+    grid-template-columns: minmax(160px, 1fr) 2fr;
+  }
+  
+  .controls {
+    flex-wrap: wrap;
+  }
 }
 </style>

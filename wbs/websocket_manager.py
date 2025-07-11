@@ -19,7 +19,6 @@ class ConnectionManager:
         await self.update_participants(room_id)
 
     async def disconnect(self, room_id: str, user_id: str):
-        # print(3, room_id, user_id)
         if room_id in self.active_connections and user_id in self.active_connections[room_id]:
             del self.active_connections[room_id][user_id]
             await self.update_participants(room_id)

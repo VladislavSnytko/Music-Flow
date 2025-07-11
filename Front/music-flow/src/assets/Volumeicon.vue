@@ -71,22 +71,119 @@ export default {
 </script>
 
 <style scoped>
+/* Основные стили компонента громкости */
+.volume-control {
+  display: flex;
+  align-items: center;
+  position: absolute;
+  bottom: 5%;
+  left: 50%;
+  transform: translateX(-50%);
+  color: white;
+  z-index: 1000; /* Чтобы компонент был выше других элементов */
+  gap: 10px; /* Расстояние между иконкой и слайдером */
+}
+
+/* Слайдер громкости */
+input[type="range"] {
+  width: 150px;
+  margin: 0 10px;
+  background: linear-gradient(to right, #00CED1, #008fee);
+  height: 5px;
+  border-radius: 5px;
+  outline: none;
+  -webkit-appearance: none;
+  position: relative;
+  z-index: 1;
+}
+
+/* Стилизация тумблера слайдера */
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 15px;
+  height: 15px;
+  background: white;
+  border-radius: 50%;
+  cursor: pointer;
+  opacity: 0; /* скрыт по умолчанию */
+  transition: opacity 0.2s ease;
+}
+
+/* Показываем тумблер при наведении на слайдер */
+input[type="range"]:hover::-webkit-slider-thumb {
+  opacity: 1;
+}
+
+/* Для Firefox */
+input[type="range"]::-moz-range-thumb {
+  width: 15px;
+  height: 15px;
+  background: white;
+  border-radius: 50%;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+input[type="range"]:hover::-moz-range-thumb {
+  opacity: 1;
+}
+
+/* Иконка громкости */
 .volume-icon {
   background: none;
   border: none;
-  padding: 0;
+  color: white;
+  font-size: 20px;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;  /* Фиксируем по большей SVG */
-  height: 30px;
 }
 
-svg {
-  display: block;
-  width: 100%;
-  height: 100%;
+/* Адаптивность для мобильных устройств */
+@media (max-width: 1024px) {
+  .volume-control {
+    bottom: 4%;
+    gap: 8px; /* Уменьшаем промежуток */
+    transform: translateX(-50%);
+  }
+
+  input[type="range"] {
+    width: 120px; /* Уменьшаем ширину слайдера */
+  }
+
+  .volume-icon {
+    font-size: 18px; /* Уменьшаем размер иконки */
+  }
 }
+
+@media (max-width: 768px) {
+  .volume-control {
+    bottom: 3%;
+    gap: 6px;
+  }
+
+  input[type="range"] {
+    width: 100px; /* Еще меньше для экрана 768px */
+  }
+
+  .volume-icon {
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .volume-control {
+    bottom: 2%;
+    gap: 5px; /* Уменьшаем промежуток */
+  }
+
+  input[type="range"] {
+    width: 80px; /* Уменьшаем ширину слайдера */
+  }
+
+  .volume-icon {
+    font-size: 14px;
+  }
+}
+
 
 </style>

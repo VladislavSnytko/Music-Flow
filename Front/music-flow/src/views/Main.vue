@@ -1,33 +1,35 @@
 <template>
   <div class="main-container">
     <!-- Левый блок: Список участников -->
-    <ParticipantsList
-      :participants="participants"
-      :userId="userId"
-    />
+    <div class="participants-column">
+      <ParticipantsList
+        :participants="participants"
+        :userId="userId"
+      />
+    </div>
     
     <!-- Центральный блок: Очередь треков и поле ввода -->
-    <div class="center-section">
-      <div class="Trackqueue">
+    <div class="center-column">
+      <div class="track-queue-container">
         <TrackQueue 
-        :tracks="tracks" 
-        :currentTrackIndex="currentTrackIndex"
-      />
+          :tracks="tracks" 
+          :currentTrackIndex="currentTrackIndex"
+        />
       </div>
-      <div class="SendBlock">
+      <div class="send-block">
         <SendTrack @send="handleSendTrack"/>
       </div>
-      <!-- <SendTrack class="SendBlock" @send="handleSendTrack"/> -->
-      
     </div>
 
     <!-- Правый блок: Плеер -->
-    <AudioPlayer
-      ref="audioPlayer"
-      :song="currentSong"
-      @participants-update="updateParticipantsList"
-      @update-tracks="updateTracksList"
-    />
+    <div class="player-column">
+      <AudioPlayer
+        ref="audioPlayer"
+        :song="currentSong"
+        @participants-update="updateParticipantsList"
+        @update-tracks="updateTracksList"
+      />
+    </div>
   </div>
 </template>
 
@@ -82,62 +84,93 @@ export default {
 };
 </script>
 
+
 <style scoped>
 .main-container {
-  display: flex;
-  justify-content: center; /* центрирует по горизонтали */
-  align-items: stretch;    /* чтобы блоки тянулись на всю высоту */
-  height: 100vh;           /* чтобы занять весь экран */
-  gap: 20px;               /* отступы между колонками */
+  display: grid;
+  /* grid-template-columns: minmax(250px, 400px) minmax(400px, 1fr) minmax(250px, 450px); */
+  grid-template-columns: 1fr 2fr 1fr;
+  gap: 20px;
+  height: 100vh;
   padding: 20px;
   box-sizing: border-box;
+  overflow: hidden;
 }
 
-/* Стили для левой колонки (участники) */
-.participants-container {
-  width: 400px;
-  height: calc(100% - 40px);
-  margin-top: 20px;
-  border-radius: 30px;
-}
-
-/* Центральная секция: очередь треков + поле ввода */
-
-.center-section {
+.participants-column {
   display: flex;
   flex-direction: column;
-  border-radius: 30px;
-  backdrop-filter: blur(10px);
-  flex: 0 1 800px;
   overflow: hidden;
-  min-height: 0;
   height: 100%;
 }
 
-.Trackqueue {
-  flex: 1 1 auto;
+.center-column {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  border-radius: 30px;
+  backdrop-filter: blur(10px);
+  overflow: hidden;
+}
+
+.track-queue-container {
+  flex: 1;
   overflow-y: auto;
   padding: 7px;
   box-sizing: border-box;
 }
 
-
-/* .SendBlock {
+.send-block {
+  flex-shrink: 0;
   padding: 16px 20px;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 50px;
   background: rgba(23, 18, 34, 0.7);
-} */
-
-ParticipantsList,
-.player-wrapper {
-  width: 300px;
-  flex-shrink: 0;
 }
 
-/* Стили для очереди треков */
-.queue-container {
-  flex-grow: 1;
-  overflow-y: auto;
-  padding: 20px;
+.player-column {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Мобильная версия */
+@media (max-width: 1024px) {
+  .main-container {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
+    height: auto;
+    min-height: 100vh;
+    overflow-y: auto;
+    gap: 15px;
+    padding: 15px;
+  }
+
+  .participants-column,
+  .center-column,
+  .player-column {
+    width: 100%;
+    height: auto;
+    min-height: 300px; /* Минимальная высота для мобильных */
+  }
+
+  .track-queue-container {
+    overflow: visible;
+    flex: none;
+    height: auto;
+  }
+
+  .player-column {
+    order: 1; /* Плеер первым на мобильных */
+  }
+  
+  .center-column {
+    order: 2;
+  }
+  
+  .participants-column {
+    order: 3;
+  }
 }
 </style>

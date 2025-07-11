@@ -175,15 +175,58 @@
 // });
 
 
+// import { defineConfig, loadEnv } from 'vite';
+// import vue from '@vitejs/plugin-vue';
+// import path from 'path';
+// import mkcert from 'vite-plugin-mkcert';
+
+// export default defineConfig(({ mode }) => {
+//   // Загружаем переменные окружения с учётом текущего режима (например, 'development')
+//   const env = loadEnv(mode, process.cwd());
+
+//   const DOMAIN = env.VITE_DOMAIN;
+
+//   return {
+//     plugins: [vue(), mkcert()],
+//     resolve: {
+//       alias: {
+//         '@': path.resolve(__dirname, './src'),
+//       },
+//     },
+//     server: {
+//       port: 443,
+//       allowedHosts: [
+//         'user309416871-c4kmuk4p.tunnel.vk-apps.com',
+//         DOMAIN,
+//       ],
+//       https: true,
+//       strictPort: true,
+//       hmr: { protocol: 'wss' },
+//       headers: {
+//         'Content-Security-Policy': `
+//           default-src 'self' https://yastatic.net https://passport.yandex.ru;
+//           script-src 'self' 'unsafe-inline' 'unsafe-eval' https://yastatic.net https://mc.yandex.ru https://passport.yandex.ru;
+//           style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+//           font-src 'self' https://fonts.gstatic.com https://yastatic.net;
+//           media-src 'self' https://*.trycloudflare.com https://bottle-deaths-guestbook-kernel.trycloudflare.com;
+//           img-src * data:;
+//           frame-src https://*.yandex.ru https://passport.yandex.ru;
+//           connect-src *;
+//         `.replace(/\s{2,}/g, ' ').trim()
+//       }
+//     }
+//   };
+// });
+
+
+
 import { defineConfig, loadEnv } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import path from 'path';
 import mkcert from 'vite-plugin-mkcert';
 
 export default defineConfig(({ mode }) => {
-  // Загружаем переменные окружения с учётом текущего режима (например, 'development')
   const env = loadEnv(mode, process.cwd());
-
   const DOMAIN = env.VITE_DOMAIN;
 
   return {
@@ -196,24 +239,38 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 443,
       allowedHosts: [
-        'threaded-literature-iraq-paths.trycloudflare.com',
+        'user309416871-c4kmuk4p.tunnel.vk-apps.com',
         DOMAIN,
       ],
       https: true,
       strictPort: true,
       hmr: { protocol: 'wss' },
-      headers: {
-        'Content-Security-Policy': `
-          default-src 'self' https://yastatic.net https://passport.yandex.ru;
-          script-src 'self' 'unsafe-inline' 'unsafe-eval' https://yastatic.net https://mc.yandex.ru https://passport.yandex.ru;
-          style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-          font-src 'self' https://fonts.gstatic.com https://yastatic.net;
-          media-src 'self' https://*.trycloudflare.com https://bottle-deaths-guestbook-kernel.trycloudflare.com;
-          img-src * data:;
-          frame-src https://*.yandex.ru https://passport.yandex.ru;
-          connect-src *;
-        `.replace(/\s{2,}/g, ' ').trim()
-      }
+      proxy: {
+        '/api': {
+          target: 'http://localhost:8000',
+          changeOrigin: true,
+          secure: false,
+          rewrite: (path) => path.replace(/^\/api/, ''),
+        },
+        '/ws': {
+          target: 'ws://localhost:8000',
+          ws: true,
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/ws/, '')
+      },
+    },
+    headers: {
+      'Content-Security-Policy': `
+        default-src 'self' https://yastatic.net https://passport.yandex.ru;
+        script-src 'self' 'unsafe-inline' 'unsafe-eval' https://yastatic.net https://mc.yandex.ru https://passport.yandex.ru;
+        style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+        font-src 'self' https://fonts.gstatic.com https://yastatic.net;
+        img-src 'self' data: https: http:;
+        media-src 'self' https://*.trycloudflare.com https://bottle-deaths-guestbook-kernel.trycloudflare.com https://*.tunnel.vk-apps.com;
+        frame-src https://*.yandex.ru https://passport.yandex.ru;
+        connect-src 'self' ws://localhost:8000 wss://localhost:8000 http://localhost:8000 https://*.yandex.ru https://passport.yandex.ru;
+      `.replace(/\n/g, '').replace(/\s{2,}/g, ' ').trim()
+    }
     }
   };
 });
