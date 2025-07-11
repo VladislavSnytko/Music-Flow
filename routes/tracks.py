@@ -106,7 +106,7 @@ async def stream_audio(url: str, request: Request, user_id: str):
             except Exception as e:
                 print(f"Error getting content length: {e}")
 
-        # Если не удалось получить Content-Length, используем примерный расчет
+        # Если не удалось получить Content-Length, используем примерный расчет (Костыль)
         if not content_length and duration_sec:
             # Примерный расчет для MP3 ~128kbps
             content_length = str(int(duration_sec * 16000))  # 16KB/сек
@@ -118,10 +118,10 @@ async def stream_audio(url: str, request: Request, user_id: str):
             "duration": duration_sec,
         }
 
-        # Основные заголовки для предотвращения скачивания
+        # Основные заголовки для преедачи
         response_headers = {
             "Content-Type": mime_type,
-            "Content-Disposition": "inline",  # Предотвращает скачивание
+            "Content-Disposition": "inline",  # Предотвращает скачивание (вроде)
             "X-Content-Type-Options": "nosniff",
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Expose-Headers": "Track-Info, Content-Duration",
@@ -131,7 +131,7 @@ async def stream_audio(url: str, request: Request, user_id: str):
             "Accept-Ranges": "bytes",
         }
 
-        # Добавляем Content-Length, если он известен
+        # Добавляем Content-Length, если он есть
         if content_length:
             response_headers["Content-Length"] = content_length
 
@@ -145,7 +145,7 @@ async def stream_audio(url: str, request: Request, user_id: str):
                             detail=f"Upstream error: {response.status_code}"
                         )
                     
-                    # Используем оптимальный размер чанка
+                    # Настройка размера чанка
                     async for chunk in response.aiter_bytes(chunk_size=320 * 1024):
                         if await request.is_disconnected():
                             break

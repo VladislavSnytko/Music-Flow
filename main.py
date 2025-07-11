@@ -43,7 +43,7 @@ async def add_csp_header(request: Request, call_next):
     )
     return response
 
-# Базовый эндпоинт
+
 @app.get("/", response_class=HTMLResponse)
 async def player_page(request: Request):
     cookies = request.cookies
@@ -57,6 +57,6 @@ if __name__ == "__main__":
 
     uvicorn.run(
         "main:app",
-        port=444,
+        port=8000,
         reload=True,  # Автоперезагрузка при изменениях
     )
