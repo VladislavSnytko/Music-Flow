@@ -163,6 +163,9 @@ export default {
     
     
     this.currentAudio = this.$refs.audioElement; // Инициализируем currentAudio из ref
+    // Ensure bound methods for event handlers
+    this.updateTimeDisplay = this.updateTimeDisplay.bind(this);
+    this.updatePlayerUI = this.updatePlayerUI.bind(this);
 
     //     this.currentAudio.addEventListener('ended', () => {
     //   console.log('Трек завершился, плавно переключаем на следующий');
