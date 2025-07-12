@@ -75,6 +75,9 @@ export default {
     },
     // При клике на прогресс-бар вычисляем новое время
     seekFromClick(e) {
+      if (!isFinite(this.duration) || this.duration === 0) {
+        return;
+      }
       const rect = e.currentTarget.getBoundingClientRect();
       const clickX = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
       const newTime = (clickX / rect.width) * this.duration;
