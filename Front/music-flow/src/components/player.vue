@@ -631,13 +631,12 @@ methods: {
       return tl;
     },
     
-    async loadTrack(trackUrl) {
+      async loadTrack(trackUrl) {
         try {
           if (this.isInitialLoad) {
             this.isLoading = true;
             this.isInitialLoad = false;
           } else {
-            // Анимация скрытия старого контента
             await gsap.to([this.$refs.coverImage, this.$refs.songInfo], {
               opacity: 0,
               y: 20,
@@ -646,12 +645,13 @@ methods: {
             });
           }
 
+          // Reset previous source
+          this.currentAudio.src = '';
+          await new Promise(r => setTimeout(r, 50));
 
           const response = await fetch(`/api/tracks/track_and_stream?url=${encodeURIComponent(trackUrl)}&user_id=${this.userId}`);
-
           const data = await response.json();
 
-          // Обновляем данные
           this.currentTrackTitle = data.title;
           this.currentArtist = data.artist;
           this.$refs.coverImage.src = data.cover;
@@ -659,55 +659,34 @@ methods: {
           try {
             await loadWithMediaSource(this.currentAudio, `/api/tracks${data.stream_url}`);
           } catch (e) {
-            console.error('MediaSource error:', e);
+            console.error('MediaSource error, falling back to standard:', e);
             this.currentAudio.src = `/api/tracks${data.stream_url}`;
             await this.currentAudio.load();
           }
-          
 
-          // Добавляем Media Session API здесь
           if ('mediaSession' in navigator) {
             navigator.mediaSession.metadata = new MediaMetadata({
               title: data.title,
               artist: data.artist,
               artwork: [{ src: data.cover, sizes: '400x400', type: 'image/jpeg' }]
             });
-            
 
-            
-            
-            // Обработчики медиа-кнопок
-            navigator.mediaSession.setActionHandler('play', () => {
-              this.sendPlayCommand();
-            });
-
-            navigator.mediaSession.setActionHandler('pause', () => {
-              this.sendPauseCommand();
-            });
-
-            navigator.mediaSession.setActionHandler('previoustrack', () => {
-              this.prevTrack();
-            });
-
-            navigator.mediaSession.setActionHandler('nexttrack', () => {
-              this.nextTrack();
-            });
+            navigator.mediaSession.setActionHandler('play', () => this.sendPlayCommand());
+            navigator.mediaSession.setActionHandler('pause', () => this.sendPauseCommand());
+            navigator.mediaSession.setActionHandler('previoustrack', () => this.prevTrack());
+            navigator.mediaSession.setActionHandler('nexttrack', () => this.nextTrack());
           }
 
           await new Promise((resolve) => {
-            this.currentAudio.oncanplay = () => {
-              if (this.isLoading) {
-                this.hideLoader(); // Только при первом заходе
-              }
-              this.currentAudio.oncanplay = null;
+            const onCanPlay = () => {
+              this.currentAudio.removeEventListener('canplay', onCanPlay);
+              if (this.isLoading) this.hideLoader();
               resolve();
             };
+            this.currentAudio.addEventListener('canplay', onCanPlay);
             this.currentAudio.load();
           });
 
-          await this.$nextTick();
-
-          // Анимация появления нового контента
           await gsap.fromTo(
             [this.$refs.coverImage, this.$refs.songInfo],
             { opacity: 0, y: -20 },
@@ -719,10 +698,9 @@ methods: {
               stagger: 0.1
             }
           );
-
         } catch (error) {
-          console.error('Ошибка загрузки трека:', error);
-          await this.showErrorState();
+          console.error('Track loading error:', error);
+          this.currentAudio.src = '';
           throw error;
         }
       },
