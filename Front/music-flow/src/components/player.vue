@@ -63,6 +63,7 @@ import Logo from '@/assets/Logo-for-player.vue';
 import TimeBar from '../components/time-bar.vue';
 import { initSocket, sendSocketMessage } from '../utils/playerSocket.js';
 import { loadWithMediaSource } from '../utils/mediaSourcePlayer.js';
+import { fetchQueue, formatParticipants } from '../utils/roomData.js';
 import { gsap } from 'gsap';
 import { CustomEase } from 'gsap/CustomEase';
 gsap.registerPlugin(CustomEase);
@@ -408,13 +409,8 @@ methods: {
         case 'init':
           // Обрабатываем все данные сразу
           if (data.track_url) {
-            // this.response = await fetch(`/api/get_queue_tracks?room_id=${this.room_id}&track_id=`);
-            // this.response = await fetch(`/api/rooms/${this.room_id}/qeue&track_id=`);
-            this.response = await fetch(`/api/rooms/${this.room_id}/queue?track_id=`);
-            // this.response = await fetch(`/api/rooms/${this.room_id}/queue?track_id=${data.track_id}`);
-            this.json_with_list = await this.response.json();
+            this.json_with_list = await fetchQueue(this.room_id);
             this.updateTracksList(this.json_with_list.list_track, this.json_with_list.index);
-            // console.log(json_with_list);
             await this.loadTrack(data.track_url, async () => {
               console.log('time from bd:', data.current_time);
               this.currentAudio.currentTime = data.current_time;
@@ -474,9 +470,7 @@ methods: {
         //   break;
         case 'participants_update':
           console.log('participants:', data.participants);
-          const formattedParticipants = Object.entries(data.participants).map(
-            ([id, name]) => ({ id, name })
-          );
+          const formattedParticipants = formatParticipants(data.participants);
           this.$emit('participants-update', formattedParticipants);
         break;
         case 'load_track':
@@ -489,12 +483,8 @@ methods: {
         case 'add_track':
         // if (data.tracks) {
           // const updatedTracks = [...this.list_tracks, ...data.tracks];
-          // var response2 = await fetch(`/api/get_queue_tracks?room_id=${this.room_id}&track_id=${data.track_id}`);
-          var response2 = await fetch(`/api/rooms/${this.room_id}/queue?track_id=${data.track_id}`);
-          var json_with_list2 = await response2.json();
-          console.log(json_with_list2);
+          const json_with_list2 = await fetchQueue(this.room_id, data.track_id);
           this.json_with_list.list_track.push(json_with_list2.new_track);
-          console.log(this.json_with_list);
           this.updateTracksList(this.json_with_list.list_track, this.index);
           // this.updateTracksList(updatedTracks, this.currentTrackIndex);
         // }
@@ -745,8 +735,6 @@ methods: {
               this.nextTrack();
             });
           }
-
-          await loadWithMediaSource(this.currentAudio, `/api/tracks${data.stream_url}`);
 
           await new Promise((resolve) => {
             this.currentAudio.oncanplay = () => {
