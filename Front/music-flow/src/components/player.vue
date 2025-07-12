@@ -61,6 +61,8 @@ import volume from '@/components/volume.vue';
 // import Send from '@/assets/Send.vue';
 import Logo from '@/assets/Logo-for-player.vue';
 import TimeBar from '../components/time-bar.vue';
+import { initSocket, sendSocketMessage } from '../utils/playerSocket.js';
+import { loadWithMediaSource } from '../utils/mediaSourcePlayer.js';
 import { gsap } from 'gsap';
 import { CustomEase } from 'gsap/CustomEase';
 gsap.registerPlugin(CustomEase);
@@ -324,63 +326,36 @@ methods: {
 
 
   async initWebSocket() {
-  // Получаем user_id из куки
-  const userIdFromCookie = await this.getCookie('user_id');
-  console.log(this.userIdFromCookie);
-  
-  // Проверяем, есть ли user_id в куках
-  if (!userIdFromCookie) {
-    alert('Требуется авторизация');
-    return;
-  }
+    const userIdFromCookie = await this.getCookie('user_id');
+    if (!userIdFromCookie) {
+      alert('Требуется авторизация');
+      return;
+    }
 
-  this.userId = userIdFromCookie;
-  this.currentAudio = document.getElementById('audio');
-  console.log(this.currentAudio);
+    this.userId = userIdFromCookie;
+    this.currentAudio = document.getElementById('audio');
 
-      // const wsProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
-      this.socket = new WebSocket(
-        `/ws/room/${this.room_id}/ws?user_id=${this.userId}`
-        // `/wss/room/${this.room_id}/ws?user_id=${this.userId}`
-      );
-
-      this.socket.onopen = () => {
-        console.log('Connected to room');
-        this.socket.send(JSON.stringify({ type: "get_participants" }));
-      };
-
-      this.socket.onmessage = async (event) => {
-        const data = JSON.parse(event.data);
-        console.log(data);
-        await this.handleSocketMessage(data);
-      };
-
-    this.socket.onclose = async () => {
-        console.log('Disconnected from room');
-      };
-    },
+    this.socket = initSocket(this.room_id, this.userId, {
+      '*': (data) => this.handleSocketMessage(data)
+    });
+  },
     async sendPlayCommand() {
-      if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-        await this.socket.send(JSON.stringify({
-          type: 'play',
-          position: this.currentAudio.currentTime
-        }));
-        console.log('this.currentAudio.src:', this.currentAudio.src);
-        this.currentAudio.play();
-        await this.updatePlayerUI(true);
-        this.isPlaying = true;
-      }
+      sendSocketMessage(this.socket, {
+        type: 'play',
+        position: this.currentAudio.currentTime
+      });
+      this.currentAudio.play();
+      await this.updatePlayerUI(true);
+      this.isPlaying = true;
     },
     async sendPauseCommand() {
-      if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-        await this.socket.send(JSON.stringify({
-          type: 'pause',
-          position: this.currentAudio.currentTime
-        }));
-        this.currentAudio.pause();
-        this.updatePlayerUI(false);
-        this.isPlaying = false;
-      }
+      sendSocketMessage(this.socket, {
+        type: 'pause',
+        position: this.currentAudio.currentTime
+      });
+      this.currentAudio.pause();
+      this.updatePlayerUI(false);
+      this.isPlaying = false;
     },
     // updateVolume() {
     //   if (this.currentAudio) {
@@ -407,12 +382,10 @@ methods: {
       setTimeout(() => { this.isSyncing = false; }, 100);
     },
     async sendSeekCommand(position) {
-      if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-        await this.socket.send(JSON.stringify({
-          type: 'seek',
-          position: position
-        }));
-      }
+      sendSocketMessage(this.socket, {
+        type: 'seek',
+        position
+      });
     },
 
     async onSeek(currentTime) {
@@ -611,23 +584,17 @@ methods: {
     // }
   },
   async sendTrackChange(trackUrl) {
-    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-      console.log(3);
-      await this.socket.send(JSON.stringify({
-        type: 'previous_track',
-        tracks: [trackUrl],
-        index: 0
-      }));
-    }
+    sendSocketMessage(this.socket, {
+      type: 'previous_track',
+      tracks: [trackUrl],
+      index: 0
+    });
   },
   async sendAddTrack(trackUrl) {
-    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-
-      await this.socket.send(JSON.stringify({
-        type: 'add_track',
-        tracks: [trackUrl]
-      }));
-    }
+    sendSocketMessage(this.socket, {
+      type: 'add_track',
+      tracks: [trackUrl]
+    });
   },
   // async sendNextTrack() {
   //   if (this.socket && this.socket.readyState === WebSocket.OPEN) {
@@ -645,9 +612,7 @@ methods: {
     this.nextTrackTimeout = setTimeout(async () => {
       if (this.socket && this.socket.readyState === WebSocket.OPEN) {
         this.sendPauseCommand();
-        await this.socket.send(JSON.stringify({
-          type: 'next_track'
-        }));
+        sendSocketMessage(this.socket, { type: 'next_track' });
       }
       this.nextTrackTimeout = null;
     }, 300); // Задержка 300мс
@@ -659,9 +624,7 @@ methods: {
       }
       else {
         this.sendPauseCommand();
-        await this.socket.send(JSON.stringify({
-          type: 'previous_track'
-        }));
+        sendSocketMessage(this.socket, { type: 'previous_track' });
       }}
   },
     async hideLoader() {
@@ -751,7 +714,7 @@ methods: {
           this.currentArtist = data.artist;
           this.$refs.coverImage.src = data.cover;
 
-          this.currentAudio.src = `/api/tracks${data.stream_url}`;
+          await loadWithMediaSource(this.currentAudio, `/api/tracks${data.stream_url}`);
           
 
           // Добавляем Media Session API здесь
@@ -783,7 +746,7 @@ methods: {
             });
           }
 
-          this.currentAudio.src = `/api/tracks${data.stream_url}`;
+          await loadWithMediaSource(this.currentAudio, `/api/tracks${data.stream_url}`);
 
           await new Promise((resolve) => {
             this.currentAudio.oncanplay = () => {
