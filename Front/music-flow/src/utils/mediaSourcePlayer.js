@@ -11,19 +11,47 @@ export async function loadWithMediaSource(audioElement, url) {
 
     mediaSource.addEventListener('sourceopen', async () => {
       try {
-        const response = await fetch(url);
-        const arrayBuffer = await response.arrayBuffer();
-        const mime = response.headers.get('content-type') || 'audio/mpeg';
-        const sourceBuffer = mediaSource.addSourceBuffer(mime);
+        const sourceBuffer = mediaSource.addSourceBuffer('audio/mpeg');
+        sourceBuffer.mode = 'sequence';
+
+        let queue = [];
+        let updating = false;
+        const append = (chunk) => {
+          if (!updating) {
+            updating = true;
+            sourceBuffer.appendBuffer(chunk);
+          } else {
+            queue.push(chunk);
+          }
+        };
+
         sourceBuffer.addEventListener('updateend', () => {
-          mediaSource.endOfStream();
-          resolve();
+          updating = false;
+          if (queue.length > 0) {
+            append(queue.shift());
+          } else if (mediaSource.readyState === 'open' && !audioElement.error) {
+            mediaSource.endOfStream();
+            resolve();
+          }
         });
-        sourceBuffer.addEventListener('error', (e) => {
-          mediaSource.endOfStream();
-          reject(e);
-        });
-        sourceBuffer.appendBuffer(arrayBuffer);
+
+        const response = await fetch(url);
+        const reader = response.body.getReader();
+
+        const read = async () => {
+          const { done, value } = await reader.read();
+          if (done) {
+            if (!updating) {
+              mediaSource.endOfStream();
+              resolve();
+            }
+            return;
+          }
+          append(value);
+          read();
+        };
+
+        read();
       } catch (e) {
         reject(e);
       }
