@@ -1,5 +1,5 @@
 export async function loadWithMediaSource(audioElement, url) {
-  if (!window.MediaSource) {
+  if (!window.MediaSource || !MediaSource.isTypeSupported('audio/mpeg')) {
     audioElement.src = url;
     await audioElement.load();
     return;
@@ -18,6 +18,10 @@ export async function loadWithMediaSource(audioElement, url) {
         sourceBuffer.addEventListener('updateend', () => {
           mediaSource.endOfStream();
           resolve();
+        });
+        sourceBuffer.addEventListener('error', (e) => {
+          mediaSource.endOfStream();
+          reject(e);
         });
         sourceBuffer.appendBuffer(arrayBuffer);
       } catch (e) {

@@ -704,7 +704,13 @@ methods: {
           this.currentArtist = data.artist;
           this.$refs.coverImage.src = data.cover;
 
-          await loadWithMediaSource(this.currentAudio, `/api/tracks${data.stream_url}`);
+          try {
+            await loadWithMediaSource(this.currentAudio, `/api/tracks${data.stream_url}`);
+          } catch (e) {
+            console.error('MediaSource error:', e);
+            this.currentAudio.src = `/api/tracks${data.stream_url}`;
+            await this.currentAudio.load();
+          }
           
 
           // Добавляем Media Session API здесь
