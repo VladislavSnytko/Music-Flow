@@ -61,9 +61,10 @@ import volume from '@/components/volume.vue';
 // import Send from '@/assets/Send.vue';
 import Logo from '@/assets/Logo-for-player.vue';
 import TimeBar from '../components/time-bar.vue';
-import { initSocket, sendSocketMessage } from '../utils/playerSocket.js';
+import { sendSocketMessage } from '../utils/playerSocket.js';
 import { loadWithMediaSource } from '../utils/mediaSourcePlayer.js';
 import { fetchQueue, formatParticipants } from '../utils/roomData.js';
+import { connectToRoom } from '../utils/roomConnection.js';
 import { gsap } from 'gsap';
 import { CustomEase } from 'gsap/CustomEase';
 gsap.registerPlugin(CustomEase);
@@ -88,13 +89,12 @@ export default {
     song: {
       type: Object,
       default: () => ({ name: '', artist: '', src: '' })
+    },
+    roomId: {
+      type: String,
+      required: true
     }
   },
-    
-    audioRef: {
-      type: Object,
-      required: true
-    },
     data() {
       return {
         isLoading: true,
@@ -115,7 +115,6 @@ export default {
         currentTrack: null,
         progress: null,
         list_tracks: [],
-        room_id: 'faf1c5d6-da2f-4fb5-88a6-7023d40d62ff',
         response: null,
         json_with_list: null,
         nextTrackTimeout: null
@@ -243,15 +242,8 @@ beforeUnmount() {
     }
     clearInterval(this.interval);
   },
+
 methods: {
-
-
-  async getCookie(name) {
-      const value = `; ${document.cookie}`;
-      const parts = value.split(`; ${name}=`);
-      if (parts.length === 2) return parts.pop().split(';').shift();
-      return null;
-  },
 
 
 
@@ -270,18 +262,14 @@ methods: {
 
 
   async initWebSocket() {
-    const userIdFromCookie = await this.getCookie('user_id');
-    if (!userIdFromCookie) {
+    try {
+      this.currentAudio = document.getElementById('audio');
+      const { socket, userId } = connectToRoom(this.roomId, (data) => this.handleSocketMessage(data));
+      this.socket = socket;
+      this.userId = userId;
+    } catch (e) {
       alert('Требуется авторизация');
-      return;
     }
-
-    this.userId = userIdFromCookie;
-    this.currentAudio = document.getElementById('audio');
-
-    this.socket = initSocket(this.room_id, this.userId, {
-      '*': (data) => this.handleSocketMessage(data)
-    });
   },
     async sendPlayCommand() {
       sendSocketMessage(this.socket, {
@@ -348,7 +336,7 @@ methods: {
         case 'init':
           // Обрабатываем все данные сразу
           if (data.track_url) {
-            this.json_with_list = await fetchQueue(this.room_id);
+            this.json_with_list = await fetchQueue(this.roomId);
             this.updateTracksList(this.json_with_list.list_track, this.json_with_list.index);
             await this.loadTrack(data.track_url, async () => {
               console.log('time from bd:', data.current_time);
@@ -413,7 +401,7 @@ methods: {
           break
         // ... другие типы сообщений
         case 'add_track':
-          const json_with_list2 = await fetchQueue(this.room_id, data.track_id);
+          const json_with_list2 = await fetchQueue(this.roomId, data.track_id);
           this.json_with_list.list_track.push(json_with_list2.new_track);
           this.updateTracksList(this.json_with_list.list_track, this.index);
 
