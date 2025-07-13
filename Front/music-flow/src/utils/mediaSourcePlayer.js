@@ -2,13 +2,13 @@ let currentSession = null;
 
 export async function loadWithMediaSource(audioElement, url) {
   if (!window.MediaSource || !MediaSource.isTypeSupported('audio/mpeg')) {
-    // Fallback for browsers without MediaSource support
+    // Fallback для браузеров без поддержки MediaSource
     audioElement.src = url;
     await audioElement.load();
     return;
   }
 
-  // Cancel any previous load session
+  // Отменяем предыдущую загрузку
   if (currentSession) {
     currentSession.abort();
     currentSession = null;
@@ -20,7 +20,7 @@ export async function loadWithMediaSource(audioElement, url) {
     mediaSource: new MediaSource(),
     objectUrl: null,
     sourceBuffer: null,
-
+    
     abort() {
       this.aborted = true;
       this.abortController.abort();
@@ -32,7 +32,7 @@ export async function loadWithMediaSource(audioElement, url) {
           this.mediaSource.endOfStream();
         }
       } catch (e) {
-        console.warn('Cleanup error:', e);
+        console.warn('Ошибка очистки:', e);
       }
       if (this.objectUrl) {
         URL.revokeObjectURL(this.objectUrl);
@@ -63,7 +63,7 @@ export async function loadWithMediaSource(audioElement, url) {
 
         const appendChunk = (chunk) => {
           if (session.aborted) return;
-
+          
           if (!updating && session.mediaSource.readyState === 'open') {
             try {
               updating = true;
@@ -78,42 +78,36 @@ export async function loadWithMediaSource(audioElement, url) {
 
         session.sourceBuffer.addEventListener('updateend', () => {
           if (session.aborted) return;
-
+          
           updating = false;
           if (queue.length > 0) {
             appendChunk(queue.shift());
-          } else if (session.mediaSource.readyState === 'open') {
-            try {
-              session.mediaSource.endOfStream();
-              resolve();
-            } catch (e) {
-              onError(e);
-            }
           }
         });
 
         session.sourceBuffer.addEventListener('error', () => {
-          onError(new Error('SourceBuffer error'));
+          onError(new Error('Ошибка SourceBuffer'));
         });
 
-        const response = await fetch(url, {
-          signal: session.abortController.signal
+        const response = await fetch(url, { 
+          signal: session.abortController.signal 
         });
+        
         const reader = response.body.getReader();
 
         const readChunks = async () => {
           try {
             const { done, value } = await reader.read();
             if (session.aborted) return;
-
+            
             if (done) {
-              if (!updating && session.mediaSource.readyState === 'open') {
+              if (session.mediaSource.readyState === 'open') {
                 session.mediaSource.endOfStream();
-                resolve();
               }
+              resolve();
               return;
             }
-
+            
             appendChunk(value);
             readChunks();
           } catch (e) {
@@ -131,12 +125,12 @@ export async function loadWithMediaSource(audioElement, url) {
 
     session.mediaSource.addEventListener('sourceclose', () => {
       if (!session.aborted) {
-        onError(new Error('MediaSource closed unexpectedly'));
+        onError(new Error('MediaSource закрыт неожиданно'));
       }
     });
 
     audioElement.addEventListener('error', () => {
-      onError(new Error('Audio element error'));
+      onError(new Error('Ошибка аудио элемента'));
     });
 
     audioElement.load();
