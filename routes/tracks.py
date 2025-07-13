@@ -60,11 +60,14 @@ async def track_and_stream(url: str, user_id: str):
         
         stream_url = download_info.get_direct_link()
 
+        # вычисляем длительность в секундах
+        duration_sec = track.duration_ms / 1000 if track.duration_ms else None
         track_info = {
             "title": track.title,
             "artist": ", ".join(artist.name for artist in track.artists),
             "cover": f"https://{track.cover_uri.replace('%%', '400x400')}",
             "stream_url": f"/stream?url={url}&user_id={user_id}",
+            "duration": duration_sec,
         }
 
         return JSONResponse(track_info)
