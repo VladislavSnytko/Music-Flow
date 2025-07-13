@@ -1,5 +1,8 @@
 <template>
-  <div class="main-container">
+  <div v-if="!connected" class="main-container">
+    <Rooms @join-room="handleJoinRoom" />
+  </div>
+  <div v-else class="main-container">
     <!-- Левый блок: Список участников -->
     <div class="participants-column">
       <ParticipantsList
@@ -24,8 +27,10 @@
     <!-- Правый блок: Плеер -->
     <div class="player-column">
       <AudioPlayer
+        v-if="roomId"
         ref="audioPlayer"
         :song="currentSong"
+        :roomId="roomId"
         @participants-update="updateParticipantsList"
         @update-tracks="updateTracksList"
       />
@@ -38,13 +43,16 @@ import AudioPlayer from '@/components/player.vue';
 import ParticipantsList from '@/components/Participants-list.vue';
 import TrackQueue from '@/components/Track_queue.vue';
 import SendTrack from '@/components/Send-search_Track.vue';
+import Rooms from '@/components/Rooms.vue';
+import { getCookie } from '@/utils/cookies.js';
 
 export default {
   components: {
     AudioPlayer,
     ParticipantsList,
     TrackQueue,
-    SendTrack
+    SendTrack,
+    Rooms
   },
   data() {
     return {
@@ -57,7 +65,9 @@ export default {
       currentTrackIndex: 0,
       isPlayerVisible: false,
       participants: [],
-      userId: this.getCookie('user_id'),
+      userId: getCookie('user_id'),
+      roomId: null,
+      connected: false,
       // trackUrl удален отсюда
     };
   },
@@ -65,11 +75,9 @@ export default {
     updateParticipantsList(participantsArray) {
       this.participants = participantsArray;
     },
-    getCookie(name) {
-      const value = `; ${document.cookie}`;
-      const parts = value.split(`; ${name}=`);
-      if (parts.length === 2) return parts.pop().split(';').shift();
-      return null;
+    handleJoinRoom(id) {
+      this.roomId = id;
+      this.connected = true;
     },
     updateTracksList(tracksArray, currentIndex) {
       this.tracks = tracksArray;

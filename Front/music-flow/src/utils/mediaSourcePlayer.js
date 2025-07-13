@@ -20,7 +20,7 @@ export async function loadWithMediaSource(audioElement, url) {
     mediaSource: new MediaSource(),
     objectUrl: null,
     sourceBuffer: null,
-    
+
     abort() {
       this.aborted = true;
       this.abortController.abort();
@@ -60,10 +60,22 @@ export async function loadWithMediaSource(audioElement, url) {
 
         let queue = [];
         let updating = false;
+        let readingEnded = false;
+
+        const checkEnd = () => {
+          if (
+            readingEnded &&
+            !updating &&
+            session.mediaSource.readyState === 'open'
+          ) {
+            session.mediaSource.endOfStream();
+            resolve();
+          }
+        };
 
         const appendChunk = (chunk) => {
           if (session.aborted) return;
-          
+
           if (!updating && session.mediaSource.readyState === 'open') {
             try {
               updating = true;
@@ -78,10 +90,12 @@ export async function loadWithMediaSource(audioElement, url) {
 
         session.sourceBuffer.addEventListener('updateend', () => {
           if (session.aborted) return;
-          
+
           updating = false;
           if (queue.length > 0) {
             appendChunk(queue.shift());
+          } else {
+            checkEnd();
           }
         });
 
@@ -89,25 +103,23 @@ export async function loadWithMediaSource(audioElement, url) {
           onError(new Error('Ошибка SourceBuffer'));
         });
 
-        const response = await fetch(url, { 
-          signal: session.abortController.signal 
+        const response = await fetch(url, {
+          signal: session.abortController.signal
         });
-        
+
         const reader = response.body.getReader();
 
         const readChunks = async () => {
           try {
             const { done, value } = await reader.read();
             if (session.aborted) return;
-            
+
             if (done) {
-              if (session.mediaSource.readyState === 'open') {
-                session.mediaSource.endOfStream();
-              }
-              resolve();
+              readingEnded = true;
+              checkEnd();
               return;
             }
-            
+
             appendChunk(value);
             readChunks();
           } catch (e) {
