@@ -122,12 +122,7 @@ export default {
       };
     },
   computed: {
-    // formattedCurrentTime() {
-    //   return this.formatTime(this.currentTime);
-    // },
-    // formattedDuration() {
-    //   return this.formatTime(this.duration);
-    // },
+
     gradientStyle() {
       const position = (this.currentTime / this.duration) * 100
       const transitionWidth = 50 // Увеличил ширину перехода
@@ -140,11 +135,7 @@ export default {
           color-mix(in srgb, #00CED1 25%, #8A2BE2 75%) ${position}%,
           #8A2BE2 calc(${position}% + 5px),
           #8A2BE2 100%)`,
-          // background: `linear-gradient(to right,
-          // #00CED1 0%,
-          // #00CED1 ${this.progressPercentage - 20}%,
-          // #8A2BE2 ${this.progressPercentage}%,
-          // #8A2BE2 100%)`,
+
           width: '100%',
           height: '5px',
           borderRadius: '5px',
@@ -158,16 +149,14 @@ export default {
 
 
   async mounted() {
-    // await this.hideLoader();
-    
+
     
     
     this.currentAudio = this.$refs.audioElement; // Инициализируем currentAudio из ref
+    // Ensure bound methods for event handlers
+    this.updateTimeDisplay = this.updateTimeDisplay.bind(this);
+    this.updatePlayerUI = this.updatePlayerUI.bind(this);
 
-    //     this.currentAudio.addEventListener('ended', () => {
-    //   console.log('Трек завершился, плавно переключаем на следующий');
-    //   this.sendNextTrack();
-    // });
     let isTrackEnding = false;
 
     this.currentAudio.addEventListener('ended', async () => {
@@ -204,9 +193,7 @@ export default {
     return;
   }
 
-  // if (this.currentAudio) {
-  //   this.currentAudio.volume = this.volume;
-  // }
+
 
   // Обновляем интервал времени
   this.interval = setInterval(async () => {
@@ -238,8 +225,12 @@ export default {
 
   this.currentAudio.addEventListener('loadedmetadata', async () => {
     if (this.currentAudio && this.progress) {
+      
       this.progress.max = this.currentAudio.duration;
-      this.duration = this.currentAudio.duration;
+      if (this.currentAudio && Number.isFinite(this.currentAudio.duration) && this.currentAudio.duration > 0) {
+        this.duration = this.currentAudio.duration;
+      }
+      // this.duration = this.currentAudio.duration;
       await this.updateTimeDisplay();
     }
   });
@@ -310,11 +301,7 @@ methods: {
       this.updatePlayerUI(false);
       this.isPlaying = false;
     },
-    // updateVolume() {
-    //   if (this.currentAudio) {
-    //     this.currentAudio.volume = this.volume;
-    //   }
-    // },
+
     async syncPlayback(playing, position) {
       this.isSyncing = true;
 
@@ -400,9 +387,7 @@ methods: {
         case 'pause':
           await this.handlePauseMessage(data);
           break;
-        // case 'change_track':
-        //   await this.handleChangeTrackMessage(data);
-        //   break;
+
         case 'change_track':
         if (data.tracks && data.tracks.length > 0 && !this.isSyncing) {
           await this.loadTrack(data.tracks[data.index]);
@@ -415,31 +400,23 @@ methods: {
           console.log(data)
           await this.handleSeekMessage(data);
           break;
-        // case 'participants_update':
-        //   // Сюда приходят ники участников
-        //   console.log(`participants:`, data.participants);
-        //   // updateParticipantsList(data.participants);
-        //   break;
+
         case 'participants_update':
           console.log('participants:', data.participants);
           const formattedParticipants = formatParticipants(data.participants);
           this.$emit('participants-update', formattedParticipants);
         break;
         case 'load_track':
-          // var response = await fetch(`https://${DOMAIN}/get_queue_tracks?room_id=${this.room_id}`);
-          // var json_with_list = await response.json();
+
           this.updateTracksList(this.json_with_list.list_track, data.index);
           await this.loadTrack(data.url);
           break
         // ... другие типы сообщений
         case 'add_track':
-        // if (data.tracks) {
-          // const updatedTracks = [...this.list_tracks, ...data.tracks];
           const json_with_list2 = await fetchQueue(this.room_id, data.track_id);
           this.json_with_list.list_track.push(json_with_list2.new_track);
           this.updateTracksList(this.json_with_list.list_track, this.index);
-          // this.updateTracksList(updatedTracks, this.currentTrackIndex);
-        // }
+
         break;
       }
     },
@@ -473,41 +450,7 @@ methods: {
         setTimeout(() => { this.isSyncing = false; }, 100);
       }
     },
-    // async loadTrack(trackUrl, callback) {
-    //   console.log(`in load`, trackUrl);
-    //   if (!trackUrl) return;
 
-    //   this.currentTrack = trackUrl;
-    //   const data = {
-    //     user_id: "9d9f17c3-ad1e-441f-9955-0590286bc61c",
-    //     password: 'secret'
-    //   };
-    //   this.currentAudio.src = `/api/stream?url=${encodeURIComponent(trackUrl)}&user_id=${data.user_id}`;
-
-    //   const trackInfo = await fetch(`/api/track_info?url=${encodeURIComponent(trackUrl)}&user_id=${data.user_id}`);
-    //   console.log(`trackInfo: `, trackInfo);
-      
-    //   await fetch(`/api/stream?url=${encodeURIComponent(trackUrl)}&user_id=${data.user_id}`)
-    //     .then(response => {
-    //       const trackInfo = JSON.parse(response.headers.get('Track-Info'));
-    //       console.log('response:', response.headers);
-          
-    //       document.getElementById('title').textContent = trackInfo.title;
-    //       document.getElementById('artist').textContent = trackInfo.artist;
-    //       document.getElementById('cover').src = trackInfo.cover;
-
-    //       // Добавляем обработчик для определения когда трек готов к воспроизведению
-    //       this.currentAudio.oncanplay = async () => {
-    //         await callback();
-    //         this.currentAudio.oncanplay = null;
-    //       };
-    //       this.currentAudio.load();
-    //     })
-    //     // .catch(error => {
-    //     //   console.error('Ошибка:', error);
-    //     //   alert('Не удалось загрузить трек');
-    //     // });
-    // },
   async playTrack(url) {
 
     // const url = document.getElementById('track-url').value.trim();
@@ -521,9 +464,7 @@ methods: {
       console.log(`socket open`);
       this.sendAddTrack(url);
     } 
-    // else {
-    //   await this.loadTrack(url);
-    // }
+
   },
   async sendTrackChange(trackUrl) {
     sendSocketMessage(this.socket, {
@@ -538,16 +479,7 @@ methods: {
       tracks: [trackUrl]
     });
   },
-  // async sendNextTrack() {
-  //   if (this.socket && this.socket.readyState === WebSocket.OPEN) {
 
-  //     this.sendPauseCommand();
-  //     await this.socket.send(JSON.stringify({
-  //       type: 'next_track'
-  //     }));
-      
-  //   }
-  // },
   async sendNextTrack() {
     if (this.nextTrackTimeout) clearTimeout(this.nextTrackTimeout);
 
@@ -631,109 +563,84 @@ methods: {
       return tl;
     },
     
-    async loadTrack(trackUrl) {
-        try {
-          if (this.isInitialLoad) {
-            this.isLoading = true;
-            this.isInitialLoad = false;
-          } else {
-            // Анимация скрытия старого контента
-            await gsap.to([this.$refs.coverImage, this.$refs.songInfo], {
-              opacity: 0,
-              y: 20,
-              duration: 0.4,
-              ease: "power2.in"
-            });
-          }
+async loadTrack(trackUrl, callback) {
+  try {
+    if (this.isInitialLoad) {
+      this.isLoading = true;
+      this.isInitialLoad = false;
+    } else {
+      await gsap.to(
+        [this.$refs.coverImage, this.$refs.songInfo],
+        { opacity: 0, y: 20, duration: 0.4, ease: 'power2.in' }
+      );
+    }
 
+    // Получаем метаданные
+    const resp = await fetch(
+      `/api/tracks/track_and_stream?url=${encodeURIComponent(trackUrl)}&user_id=${this.userId}`
+    );
+    const data = await resp.json();
+    this.currentTrackTitle = data.title;
+    this.currentArtist = data.artist;
+    this.$refs.coverImage.src = data.cover;
 
-          const response = await fetch(`/api/tracks/track_and_stream?url=${encodeURIComponent(trackUrl)}&user_id=${this.userId}`);
+    const audio = this.currentAudio;
+    audio.pause();
+    audio.removeAttribute('src');
+    audio.load();
 
-          const data = await response.json();
+    // Очистка старых обработчиков
+    audio.onerror = null;
+    audio.onloadedmetadata = null;
+    audio.ondurationchange = null;
 
-          // Обновляем данные
-          this.currentTrackTitle = data.title;
-          this.currentArtist = data.artist;
-          this.$refs.coverImage.src = data.cover;
+    // Загрузка аудио через MediaSource
+    const fullUrl = `/api/tracks${data.stream_url}`;
+    await loadWithMediaSource(audio, fullUrl);
 
-          try {
-            await loadWithMediaSource(this.currentAudio, `/api/tracks${data.stream_url}`);
-          } catch (e) {
-            console.error('MediaSource error:', e);
-            this.currentAudio.src = `/api/tracks${data.stream_url}`;
-            await this.currentAudio.load();
-          }
-          
-
-          // Добавляем Media Session API здесь
-          if ('mediaSession' in navigator) {
-            navigator.mediaSession.metadata = new MediaMetadata({
-              title: data.title,
-              artist: data.artist,
-              artwork: [{ src: data.cover, sizes: '400x400', type: 'image/jpeg' }]
-            });
-            
-
-            
-            
-            // Обработчики медиа-кнопок
-            navigator.mediaSession.setActionHandler('play', () => {
-              this.sendPlayCommand();
-            });
-
-            navigator.mediaSession.setActionHandler('pause', () => {
-              this.sendPauseCommand();
-            });
-
-            navigator.mediaSession.setActionHandler('previoustrack', () => {
-              this.prevTrack();
-            });
-
-            navigator.mediaSession.setActionHandler('nexttrack', () => {
-              this.nextTrack();
-            });
-          }
-
-          await new Promise((resolve) => {
-            this.currentAudio.oncanplay = () => {
-              if (this.isLoading) {
-                this.hideLoader(); // Только при первом заходе
-              }
-              this.currentAudio.oncanplay = null;
-              resolve();
-            };
-            this.currentAudio.load();
-          });
-
-          await this.$nextTick();
-
-          // Анимация появления нового контента
-          await gsap.fromTo(
-            [this.$refs.coverImage, this.$refs.songInfo],
-            { opacity: 0, y: -20 },
-            {
-              opacity: 0.8,
-              y: 0,
-              duration: 0.6,
-              ease: "power2.out",
-              stagger: 0.1
-            }
-          );
-
-        } catch (error) {
-          console.error('Ошибка загрузки трека:', error);
-          await this.showErrorState();
-          throw error;
+    // Ждём, пока длительность станет известна
+    await new Promise((resolve, reject) => {
+      const checkDuration = () => {
+        if (audio.duration && audio.duration > 0) {
+          resolve();
+        } else {
+          setTimeout(checkDuration, 100);
         }
-      },
+      };
+
+      const timeout = setTimeout(() => {
+        reject(new Error('Не удалось определить длительность трека'));
+      }, 10000); // Таймаут 10 секунд
+
+      checkDuration();
+    });
+
+    this.duration = audio.duration;
+    console.log('Длительность трека:', this.duration);
+
+    // Запускаем callback и скрываем прелоадер
+    if (callback) callback();
+    if (this.isLoading) this.hideLoader();
+
+    // Анимация появления элементов
+    await gsap.fromTo(
+      [this.$refs.coverImage, this.$refs.songInfo],
+      { opacity: 0, y: -20 },
+      { opacity: 0.8, y: 0, duration: 0.6, ease: 'power2.out', stagger: 0.1 }
+    );
+  } catch (error) {
+    console.error('Ошибка загрузки трека:', error);
+    if (typeof this.showErrorState === 'function') {
+      await this.showErrorState();
+    }
+  }
+},
 
     async updatePlayerUI(isPlaying) {
-      // document.getElementById('play-btn').hidden = !isPlaying;
-      // document.getElementById('pause-btn').hidden = isPlaying;
+
       console.log();
     },
     async updateTimeDisplay() {
-  // if (!this.currentAudio || isNaN(this.currentAudio.duration)) return;
   
   this.$nextTick(() => {
     const currentTimeEl = document.getElementById('current-time');
@@ -1037,21 +944,6 @@ handleDrag(e) {
   padding: min(1vh, 10px) 0;
 }
 
-/* Адаптация для разных соотношений сторон */
-/* @media (max-aspect-ratio: 1/1) {
-  .player-grid {
-    grid-template-areas: 
-      "cover"
-      "content";
-    grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr;
-  }
-  
-  .frame {
-    max-width: 300px;
-    margin: 0 auto;
-  }
-} */
 
 @media (max-width: 768px) {
   .music-player {
@@ -1082,13 +974,6 @@ handleDrag(e) {
     font-size: clamp(12px, 4vw, 18px);
   }
 }
-
-/* Специфичные медиа-запросы для разных соотношений */
-/* @media (aspect-ratio: 16/10) {
-  .player-grid {
-    grid-template-columns: minmax(180px, 1fr) 2fr;
-  }
-} */
 
 @media (aspect-ratio: 3/2) {
   .player-grid {
